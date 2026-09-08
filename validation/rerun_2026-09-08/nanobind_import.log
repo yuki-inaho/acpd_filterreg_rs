@@ -1,0 +1,3 @@
+module: /home/inaho-omen/Project/acpd_filterreg_rs/cpp/python/acpd_filterreg_cpp/__init__.py
+native: /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/lib/python3.12/site-packages/acpd_filterreg_cpp/_native.cpython-312-x86_64-linux-gnu.so
+attrs: ['NumericalError', 'basis', 'gaussian_sum', 'permutohedral_filter', 'posterior_stats', 'registration']

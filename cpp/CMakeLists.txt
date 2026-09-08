@@ -12,6 +12,14 @@ if(ACPD_USE_SYSTEM_EIGEN)
   target_link_libraries(acpd_core PUBLIC Eigen3::Eigen)
 else()
   target_include_directories(acpd_core SYSTEM PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen> $<INSTALL_INTERFACE:include/acpd/third_party/eigen>)
+  # The vendored Eigen is the unmodified 3.3.90 snapshot taken from the attached FilterReg tree.
+  # Its Transpositions.h calls trt.derived() on a type without that member; upstream Eigen fixed
+  # this in 3.4.0. GCC >= 15 diagnoses uninstantiated template bodies at parse time, turning the
+  # latent defect into a hard error. Keep the third-party headers byte-identical and restore the
+  # pre-GCC-15 diagnostic behaviour instead. Set ACPD_USE_SYSTEM_EIGEN=ON to use Eigen >= 3.4.
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 15)
+    target_compile_options(acpd_core PUBLIC -Wno-template-body)
+  endif()
 endif()
 target_compile_definitions(acpd_core PUBLIC EIGEN_MPL2_ONLY)
 set_target_properties(acpd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)

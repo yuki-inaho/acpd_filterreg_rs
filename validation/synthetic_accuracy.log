@@ -1,0 +1,7 @@
+{
+  "exceptions": 0,
+  "improved_over_rigid": 17,
+  "regressed_over_rigid": 6,
+  "unchanged_within_1e_8": 13,
+  "unchanged_map": 13
+}

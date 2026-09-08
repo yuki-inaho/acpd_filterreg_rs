@@ -1,0 +1,165 @@
+✨ Pixi task (build-api in rust): python -m pip install --no-deps --no-build-isolation -e .
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Obtaining file:///home/inaho-omen/Project/acpd_filterreg_rs
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: acpd-filterreg
+  Building editable for acpd-filterreg (pyproject.toml): started
+  Building editable for acpd-filterreg (pyproject.toml): finished with status 'done'
+  Created wheel for acpd-filterreg: filename=acpd_filterreg-0.2.0-0.editable-py3-none-any.whl size=6810 sha256=85fb079d13da9ab343ef01b9766eb736caa01d3ecd3cddef0ae1461a9d32815f
+  Stored in directory: /tmp/pip-ephem-wheel-cache-sf1549gn/wheels/65/65/08/3df494705cd0fdf5bd1efbb913443f0f728f5d49e05d5fad50
+Successfully built acpd-filterreg
+Installing collected packages: acpd-filterreg
+  Attempting uninstall: acpd-filterreg
+    Found existing installation: acpd-filterreg 0.2.0
+    Uninstalling acpd-filterreg-0.2.0:
+      Successfully uninstalled acpd-filterreg-0.2.0
+Successfully installed acpd-filterreg-0.2.0
+
+✨ Pixi task (build-rust in rust): python -m pip install --no-deps --no-build-isolation -e ./rust
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Obtaining file:///home/inaho-omen/Project/acpd_filterreg_rs/rust
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: acpd-filterreg-rs
+  Building editable for acpd-filterreg-rs (pyproject.toml): started
+  Building editable for acpd-filterreg-rs (pyproject.toml): finished with status 'done'
+  Created wheel for acpd-filterreg-rs: filename=acpd_filterreg_rs-0.2.0-cp312-cp312-linux_x86_64.whl size=9466 sha256=8d81690537b30c864d0a9ba40a1f16321fa8fca35e9aac8572d04de2a0028848
+  Stored in directory: /tmp/pip-ephem-wheel-cache-on97ezb5/wheels/a8/8e/44/6775ba16e265470db944a172fc1ab0804df83f28262db6e6e3
+Successfully built acpd-filterreg-rs
+Installing collected packages: acpd-filterreg-rs
+  Attempting uninstall: acpd-filterreg-rs
+    Found existing installation: acpd-filterreg-rs 0.2.0
+    Uninstalling acpd-filterreg-rs-0.2.0:
+      Successfully uninstalled acpd-filterreg-rs-0.2.0
+Successfully installed acpd-filterreg-rs-0.2.0
+
+✨ Pixi task (core-rust in rust): cargo test -p acpd-core --manifest-path rust/Cargo.toml
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running unittests src/lib.rs (rust/target/debug/deps/acpd_core-ad38ce3063186142)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/numerics.rs (rust/target/debug/deps/numerics-aeea6dc33964a6f7)
+
+running 90 tests
+test invalid_inputs_are_errors_not_fallbacks ... ok
+test no_ridge_and_degree_feasibility ... ok
+test upstream_basis_00 ... ok
+test upstream_basis_03 ... ok
+test upstream_basis_01 ... ok
+test upstream_basis_02 ... ok
+test upstream_basis_06 ... ok
+test upstream_basis_08 ... ok
+test upstream_basis_09 ... ok
+test upstream_basis_10 ... ok
+test upstream_basis_07 ... ok
+test upstream_basis_04 ... ok
+test upstream_basis_05 ... ok
+test lattice_linearity_cache_and_gain ... ok
+test upstream_basis_11 ... ok
+test upstream_fit_04 ... ok
+test upstream_fit_00 ... ok
+test upstream_fit_01 ... ok
+test upstream_fit_02 ... ok
+test upstream_lattice_00 ... ok
+test upstream_lattice_01 ... ok
+test upstream_lattice_02 ... ok
+test upstream_fit_03 ... ok
+test upstream_lattice_03 ... ok
+test upstream_lattice_04 ... ok
+test upstream_lattice_05 ... ok
+test upstream_lattice_06 ... ok
+test upstream_fit_05 ... ok
+test upstream_lattice_07 ... ok
+test upstream_lattice_08 ... ok
+test upstream_lattice_09 ... ok
+test upstream_lattice_12 ... ok
+test upstream_lattice_11 ... ok
+test upstream_lattice_10 ... ok
+test upstream_lattice_13 ... ok
+test posterior_normalization_and_variance_dimension ... ok
+test upstream_lattice_14 ... ok
+test upstream_lattice_15 ... ok
+test upstream_lattice_16 ... ok
+test upstream_lattice_18 ... ok
+test upstream_lattice_19 ... ok
+test upstream_lattice_20 ... ok
+test upstream_lattice_17 ... ok
+test upstream_lattice_21 ... ok
+test upstream_lattice_22 ... ok
+test upstream_lattice_24 ... ok
+test upstream_lattice_25 ... ok
+test upstream_lattice_23 ... ok
+test upstream_lattice_28 ... ok
+test upstream_lattice_29 ... ok
+test upstream_lattice_26 ... ok
+test upstream_lattice_27 ... ok
+test upstream_lattice_30 ... ok
+test upstream_lattice_31 ... ok
+test upstream_posterior_01 ... ok
+test upstream_posterior_00 ... ok
+test upstream_posterior_03 ... ok
+test upstream_posterior_02 ... ok
+test upstream_schedule_01 ... ok
+test upstream_schedule_02 ... ok
+test upstream_schedule_03 ... ok
+test upstream_schedule_04 ... ok
+test upstream_schedule_05 ... ok
+test upstream_schedule_06 ... ok
+test upstream_schedule_07 ... ok
+test upstream_schedule_08 ... ok
+test upstream_schedule_00 ... ok
+test upstream_schedule_09 ... ok
+test upstream_schedule_10 ... ok
+test upstream_schedule_11 ... ok
+test upstream_schedule_13 ... ok
+test upstream_schedule_14 ... ok
+test upstream_schedule_15 ... ok
+test upstream_schedule_16 ... ok
+test upstream_schedule_17 ... ok
+test upstream_posterior_04 ... ok
+test upstream_schedule_12 ... ok
+test upstream_schedule_18 ... ok
+test upstream_schedule_20 ... ok
+test upstream_schedule_19 ... ok
+test upstream_schedule_21 ... ok
+test upstream_posterior_05 ... ok
+test upstream_fit_06 ... ok
+test upstream_schedule_23 ... ok
+test upstream_schedule_22 ... ok
+test upstream_simplex_00 ... ok
+test upstream_simplex_01 ... ok
+test twist_finite_difference_point_and_plane ... ok
+test upstream_fit_07 ... ok
+test frozen_rigid_pose_and_composition ... ok
+
+test result: ok. 90 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.88s
+
+   Doc-tests acpd_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+✨ Pixi task (test-rust in rust): python tools/manage.py test-rust
++ /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/rust/bin/python -m pytest tests/test_reference.py tests/test_api.py tests/test_native_boundary.py --native-engine rust
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/inaho-omen/Project/acpd_filterreg_rs
+configfile: pyproject.toml
+collected 124 items
+
+tests/test_reference.py ................................................ [ 38%]
+..........                                                               [ 46%]
+tests/test_api.py .....................................................  [ 89%]
+tests/test_native_boundary.py .............                              [100%]
+
+============================= 124 passed in 3.64s ==============================

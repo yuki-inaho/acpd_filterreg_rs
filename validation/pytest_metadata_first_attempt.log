@@ -1,0 +1,774 @@
+........................................................................ [ 47%]
+...........................F..F.F......F.............................F.. [ 95%]
+FFFFFFF                                                                  [100%]
+=================================== FAILURES ===================================
+______________ test_frozen_pose_composition_and_storage[direct-3] ______________
+
+d = 3, backend = 'direct', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_frozen_pose_composition_a1')
+
+    @pytest.mark.parametrize('d', [2,3])
+    @pytest.mark.parametrize('backend', reg.backend_names())
+    def test_frozen_pose_composition_and_storage(d, backend, engine, tmp_path):
+        x,y=pair(d)
+        rigid=reg.FilterRegOptions(sigma2=.04,max_iterations=18)
+        analytic=reg.AnalyticOptions(max_iterations=20,max_degree=3)
+        r=reg.registration_rigid(x,y,backend=backend,engine=engine,rigid=rigid)
+>       h=reg.registration_nonrigid(x,y,backend=backend,engine=engine,rigid=rigid,analytic=analytic)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:130: in registration_nonrigid
+    return registration(fixed, moving, method="nonrigid", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 18, 'converged': False, 'final_sigma2': 1.6807831316462794e-09, 'history': [{'ac...ckend': 'direct', 'center': [0.0732007272896024, -0.20394879337710906, -0.3344034958451007], 'method': 'nonrigid', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+_______ test_frozen_pose_composition_and_storage[permutohedral_noblur-2] _______
+
+d = 2, backend = 'permutohedral_noblur', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_frozen_pose_composition_a4')
+
+    @pytest.mark.parametrize('d', [2,3])
+    @pytest.mark.parametrize('backend', reg.backend_names())
+    def test_frozen_pose_composition_and_storage(d, backend, engine, tmp_path):
+        x,y=pair(d)
+        rigid=reg.FilterRegOptions(sigma2=.04,max_iterations=18)
+        analytic=reg.AnalyticOptions(max_iterations=20,max_degree=3)
+>       r=reg.registration_rigid(x,y,backend=backend,engine=engine,rigid=rigid)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:120: in registration_rigid
+    return registration(fixed, moving, method="rigid", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 0, 'converged': False, 'final_sigma2': 0, 'history': [], ...}, 'backend': 'permutohedral_noblur', 'center': [0.1199480954415789, 0.05967869433588577], 'method': 'rigid', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+_____________ test_frozen_pose_composition_and_storage[probreg-2] ______________
+
+d = 2, backend = 'probreg', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_frozen_pose_composition_a6')
+
+    @pytest.mark.parametrize('d', [2,3])
+    @pytest.mark.parametrize('backend', reg.backend_names())
+    def test_frozen_pose_composition_and_storage(d, backend, engine, tmp_path):
+        x,y=pair(d)
+        rigid=reg.FilterRegOptions(sigma2=.04,max_iterations=18)
+        analytic=reg.AnalyticOptions(max_iterations=20,max_degree=3)
+>       r=reg.registration_rigid(x,y,backend=backend,engine=engine,rigid=rigid)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:120: in registration_rigid
+    return registration(fixed, moving, method="rigid", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 0, 'converged': False, 'final_sigma2': 0, 'history': [], ...}, 'backend': 'probreg', 'center': [0.1199480954415789, 0.05967869433588577], 'method': 'rigid', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+_______________________ test_unordered_unequal_counts[3] _______________________
+
+d = 3, engine = 'cpp'
+
+    @pytest.mark.parametrize('d', [2,3])
+    def test_unordered_unequal_counts(d, engine):
+        x,y=pair(d)
+        a=reg.registration_analytic(x,y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=8,max_degree=2))
+        b=reg.registration_analytic(x[::-1].copy(),y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=8,max_degree=2))
+        np.testing.assert_allclose(a.transformed,b.transformed,atol=2e-9)
+>       c=reg.registration_analytic(x[:-3].copy(),y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=8,max_degree=2))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:125: in registration_analytic
+    return registration(fixed, moving, method="analytic", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 8, 'converged': False, 'final_sigma2': 0.28065406389866066, 'history': [{'active...'permutohedral', 'center': [0.08281016978495438, -0.16318725848912818, -0.3744420839690785], 'method': 'analytic', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+________________________ test_alignment_and_conversion _________________________
+
+engine = 'cpp'
+
+    def test_alignment_and_conversion(engine):
+        x,y=pair(2)
+        unaligned=np.ndarray(y.shape,dtype='float64',buffer=bytearray(y.nbytes+1),offset=1);unaligned[:]=y
+        with pytest.raises(ValueError):reg.registration_analytic(x,unaligned,engine=engine)
+>       r=reg.registration_analytic(x.astype('float32'),unaligned,copy=True,engine=engine,
+                                   analytic=reg.AnalyticOptions(max_iterations=2))
+
+tests/test_api.py:157: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:125: in registration_analytic
+    return registration(fixed, moving, method="analytic", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 2, 'converged': False, 'final_sigma2': 0.4747811746613109, 'history': [{'active'......}], ...}, 'backend': 'permutohedral', 'center': [0.1199480921883757, 0.0596786918079791], 'method': 'analytic', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+________________ test_malformed_saved_state_is_rejected[format] ________________
+
+mutation = 'format', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_malformed_saved_state_is_0')
+
+    @pytest.mark.parametrize('mutation', ['format','engine','best','variance','converged','nll','degree'])
+    def test_malformed_saved_state_is_rejected(mutation, engine, tmp_path):
+        x,y=pair(2)
+>       result=reg.registration_analytic(x,y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=2,max_degree=1))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:125: in registration_analytic
+    return registration(fixed, moving, method="analytic", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 2, 'converged': False, 'final_sigma2': 0.4749437814464977, 'history': [{'active'.....}], ...}, 'backend': 'permutohedral', 'center': [0.1199480954415789, 0.05967869433588577], 'method': 'analytic', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+________________ test_malformed_saved_state_is_rejected[engine] ________________
+
+mutation = 'engine', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_malformed_saved_state_is_1')
+
+    @pytest.mark.parametrize('mutation', ['format','engine','best','variance','converged','nll','degree'])
+    def test_malformed_saved_state_is_rejected(mutation, engine, tmp_path):
+        x,y=pair(2)
+>       result=reg.registration_analytic(x,y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=2,max_degree=1))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:125: in registration_analytic
+    return registration(fixed, moving, method="analytic", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 2, 'converged': False, 'final_sigma2': 0.4749437814464977, 'history': [{'active'.....}], ...}, 'backend': 'permutohedral', 'center': [0.1199480954415789, 0.05967869433588577], 'method': 'analytic', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+_________________ test_malformed_saved_state_is_rejected[best] _________________
+
+mutation = 'best', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_malformed_saved_state_is_2')
+
+    @pytest.mark.parametrize('mutation', ['format','engine','best','variance','converged','nll','degree'])
+    def test_malformed_saved_state_is_rejected(mutation, engine, tmp_path):
+        x,y=pair(2)
+>       result=reg.registration_analytic(x,y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=2,max_degree=1))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:125: in registration_analytic
+    return registration(fixed, moving, method="analytic", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 2, 'converged': False, 'final_sigma2': 0.4749437814464977, 'history': [{'active'.....}], ...}, 'backend': 'permutohedral', 'center': [0.1199480954415789, 0.05967869433588577], 'method': 'analytic', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+_______________ test_malformed_saved_state_is_rejected[variance] _______________
+
+mutation = 'variance', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_malformed_saved_state_is_3')
+
+    @pytest.mark.parametrize('mutation', ['format','engine','best','variance','converged','nll','degree'])
+    def test_malformed_saved_state_is_rejected(mutation, engine, tmp_path):
+        x,y=pair(2)
+>       result=reg.registration_analytic(x,y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=2,max_degree=1))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:125: in registration_analytic
+    return registration(fixed, moving, method="analytic", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 2, 'converged': False, 'final_sigma2': 0.4749437814464977, 'history': [{'active'.....}], ...}, 'backend': 'permutohedral', 'center': [0.1199480954415789, 0.05967869433588577], 'method': 'analytic', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+______________ test_malformed_saved_state_is_rejected[converged] _______________
+
+mutation = 'converged', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_malformed_saved_state_is_4')
+
+    @pytest.mark.parametrize('mutation', ['format','engine','best','variance','converged','nll','degree'])
+    def test_malformed_saved_state_is_rejected(mutation, engine, tmp_path):
+        x,y=pair(2)
+>       result=reg.registration_analytic(x,y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=2,max_degree=1))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:125: in registration_analytic
+    return registration(fixed, moving, method="analytic", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 2, 'converged': False, 'final_sigma2': 0.4749437814464977, 'history': [{'active'.....}], ...}, 'backend': 'permutohedral', 'center': [0.1199480954415789, 0.05967869433588577], 'method': 'analytic', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+_________________ test_malformed_saved_state_is_rejected[nll] __________________
+
+mutation = 'nll', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_malformed_saved_state_is_5')
+
+    @pytest.mark.parametrize('mutation', ['format','engine','best','variance','converged','nll','degree'])
+    def test_malformed_saved_state_is_rejected(mutation, engine, tmp_path):
+        x,y=pair(2)
+>       result=reg.registration_analytic(x,y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=2,max_degree=1))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:125: in registration_analytic
+    return registration(fixed, moving, method="analytic", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 2, 'converged': False, 'final_sigma2': 0.4749437814464977, 'history': [{'active'.....}], ...}, 'backend': 'permutohedral', 'center': [0.1199480954415789, 0.05967869433588577], 'method': 'analytic', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+________________ test_malformed_saved_state_is_rejected[degree] ________________
+
+mutation = 'degree', engine = 'cpp'
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-1/test_malformed_saved_state_is_6')
+
+    @pytest.mark.parametrize('mutation', ['format','engine','best','variance','converged','nll','degree'])
+    def test_malformed_saved_state_is_rejected(mutation, engine, tmp_path):
+        x,y=pair(2)
+>       result=reg.registration_analytic(x,y,engine=engine,analytic=reg.AnalyticOptions(max_iterations=2,max_degree=1))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_api.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python/acpd_filterreg/_api.py:125: in registration_analytic
+    return registration(fixed, moving, method="analytic", **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/acpd_filterreg/_api.py:115: in registration
+    return RegistrationResult.from_native(raw, engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'acpd_filterreg._result.RegistrationResult'>
+raw = {'analytic_stage': {'best_iteration': 2, 'converged': False, 'final_sigma2': 0.4749437814464977, 'history': [{'active'.....}], ...}, 'backend': 'permutohedral', 'center': [0.1199480954415789, 0.05967869433588577], 'method': 'analytic', ...}
+engine = 'cpp'
+
+    @classmethod
+    def from_native(cls, raw: dict[str, Any], engine: str) -> RegistrationResult:
+        rotation = _owned(raw["rotation"], 2)
+        translation, center = _owned(raw["translation"], 1), _owned(raw["center"], 1)
+        d = len(translation)
+        if d not in (2, 3) or rotation.shape != (d, d) or center.shape != (d,):
+            raise ValueError("inconsistent result coordinate dimensions")
+        if not np.allclose(rotation.T @ rotation, np.eye(d), atol=1e-8, rtol=0) or abs(np.linalg.det(rotation) - 1) > 1e-8:
+            raise ValueError("result rotation is not in SO(d)")
+        transformed, rigid = _owned(raw["transformed"], 2), _owned(raw["rigid_transformed"], 2)
+        if transformed.shape[1] != d or rigid.shape != transformed.shape:
+            raise ValueError("inconsistent result cloud dimensions")
+        steps = []
+        for item in raw["steps"]:
+            degree = v.integer("saved degree", item["degree"], 1, 10)
+            coefficient = _owned(item["coefficients"], 2)
+            if coefficient.shape != (len(exponents(d, degree)), d):
+                raise ValueError("inconsistent saved coefficient dimensions")
+            steps.append(AnalyticStep(degree, coefficient))
+        scale = v.real("normalization_scale", raw["normalization_scale"])
+        sigma2 = v.real("result sigma2", raw["sigma2"])
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg"):
+            raise ValueError("unknown result method/backend")
+        if raw["method"] == "rigid" and steps:
+            raise ValueError("a rigid result cannot contain analytic steps")
+        rigid_stage = StageResult.from_dict(raw["rigid_stage"])
+        analytic_stage = StageResult.from_dict(raw["analytic_stage"])
+        if analytic_stage.best_iteration != len(steps):
+            raise ValueError("saved map length disagrees with the best iteration")
+        if engine not in ("cpp", "rust"):
+            raise ValueError("unknown saved engine")
+        final_stage = rigid_stage if raw["method"] == "rigid" else analytic_stage
+        if final_stage.final_sigma2 != sigma2:
+>           raise ValueError("saved result variance disagrees with the returned stage")
+E           ValueError: saved result variance disagrees with the returned stage
+
+python/acpd_filterreg/_result.py:139: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_api.py::test_frozen_pose_composition_and_storage[direct-3] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_frozen_pose_composition_and_storage[permutohedral_noblur-2] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_frozen_pose_composition_and_storage[probreg-2] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_unordered_unequal_counts[3] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_alignment_and_conversion - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_malformed_saved_state_is_rejected[format] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_malformed_saved_state_is_rejected[engine] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_malformed_saved_state_is_rejected[best] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_malformed_saved_state_is_rejected[variance] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_malformed_saved_state_is_rejected[converged] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_malformed_saved_state_is_rejected[nll] - ValueError: saved result variance disagrees with the returned stage
+FAILED tests/test_api.py::test_malformed_saved_state_is_rejected[degree] - ValueError: saved result variance disagrees with the returned stage
+12 failed, 139 passed in 1.13s

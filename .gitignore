@@ -8,6 +8,8 @@ dist/
 outputs/
 *.aux
 *.log
+!validation/**/*.log
+!validation/*.log
 *.out
 *.toc
 *.synctex.gz

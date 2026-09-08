@@ -1,0 +1,14 @@
++ pixi --version
+pixi 0.76.2
++ pixi install -e default
+✔ The default environment has been installed.
+exit=0
++ pixi install -e cpp
+✔ The cpp environment has been installed.
+exit=0
++ pixi install -e rust
+✔ The rust environment has been installed.
+exit=0
++ pixi install -e docs
+✔ The docs environment has been installed.
+exit=0

@@ -1,0 +1,36 @@
+✨ Pixi task (build-api in cpp): python -m pip install --no-deps --no-build-isolation -e .
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Obtaining file:///home/inaho-omen/Project/acpd_filterreg_rs
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: acpd-filterreg
+  Building editable for acpd-filterreg (pyproject.toml): started
+  Building editable for acpd-filterreg (pyproject.toml): finished with status 'done'
+  Created wheel for acpd-filterreg: filename=acpd_filterreg-0.2.0-0.editable-py3-none-any.whl size=6810 sha256=d8bc75b5cd75eb735e4e2d7fbc31b3ce90f62b0dd3e61aed2f9a8148a087e217
+  Stored in directory: /tmp/pip-ephem-wheel-cache-eiee3dzy/wheels/65/65/08/3df494705cd0fdf5bd1efbb913443f0f728f5d49e05d5fad50
+Successfully built acpd-filterreg
+Installing collected packages: acpd-filterreg
+  Attempting uninstall: acpd-filterreg
+    Found existing installation: acpd-filterreg 0.2.0
+    Uninstalling acpd-filterreg-0.2.0:
+      Successfully uninstalled acpd-filterreg-0.2.0
+Successfully installed acpd-filterreg-0.2.0
+
+✨ Pixi task (build-cpp in cpp): python -m pip install --no-deps --no-build-isolation -e ./cpp
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Obtaining file:///home/inaho-omen/Project/acpd_filterreg_rs/cpp
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: acpd-filterreg-cpp
+  Building editable for acpd-filterreg-cpp (pyproject.toml): started
+  Building editable for acpd-filterreg-cpp (pyproject.toml): still running...
+  Building editable for acpd-filterreg-cpp (pyproject.toml): finished with status 'done'
+  Created wheel for acpd-filterreg-cpp: filename=acpd_filterreg_cpp-0.2.0-cp312-cp312-linux_x86_64.whl size=251455 sha256=c10393712ee669ee9e071f7d3c488df4b117c0c48da8944f39a463eceb6248ab
+  Stored in directory: /tmp/pip-ephem-wheel-cache-x2o4qvrf/wheels/5c/81/70/965e3cfcad02251561d910b365d5055aa62c736c8ab6a5400b
+Successfully built acpd-filterreg-cpp
+Installing collected packages: acpd-filterreg-cpp
+Successfully installed acpd-filterreg-cpp-0.2.0

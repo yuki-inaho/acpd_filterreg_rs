@@ -1,0 +1,14 @@
+[  9%] Building CXX object CMakeFiles/acpd_core.dir/src/lattice.cpp.o
+[ 18%] Building CXX object CMakeFiles/acpd_core.dir/src/types.cpp.o
+[ 27%] Building CXX object CMakeFiles/acpd_core.dir/src/gaussian.cpp.o
+[ 36%] Building CXX object CMakeFiles/acpd_core.dir/src/rigid.cpp.o
+[ 45%] Building CXX object CMakeFiles/acpd_core.dir/src/analytic.cpp.o
+[ 54%] Building CXX object CMakeFiles/acpd_core.dir/src/registration.cpp.o
+[ 63%] Linking CXX static library libacpd_core.a
+[ 63%] Built target acpd_core
+[ 72%] Building CXX object CMakeFiles/acpd_test_driver.dir/tests/driver.cpp.o
+[ 81%] Building CXX object CMakeFiles/acpd_core_tests.dir/tests/core_tests.cpp.o
+[ 90%] Linking CXX executable acpd_test_driver
+[ 90%] Built target acpd_test_driver
+[100%] Linking CXX executable acpd_core_tests
+[100%] Built target acpd_core_tests

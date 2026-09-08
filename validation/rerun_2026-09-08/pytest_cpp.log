@@ -1,0 +1,87 @@
+✨ Pixi task (build-api in cpp): python -m pip install --no-deps --no-build-isolation -e .
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Obtaining file:///home/inaho-omen/Project/acpd_filterreg_rs
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: acpd-filterreg
+  Building editable for acpd-filterreg (pyproject.toml): started
+  Building editable for acpd-filterreg (pyproject.toml): finished with status 'done'
+  Created wheel for acpd-filterreg: filename=acpd_filterreg-0.2.0-0.editable-py3-none-any.whl size=6810 sha256=06080f74f631ae9cfa07c6cb19ba151256c4a9565dde3bffceaa89521269e027
+  Stored in directory: /tmp/pip-ephem-wheel-cache-qcsudowa/wheels/65/65/08/3df494705cd0fdf5bd1efbb913443f0f728f5d49e05d5fad50
+Successfully built acpd-filterreg
+Installing collected packages: acpd-filterreg
+  Attempting uninstall: acpd-filterreg
+    Found existing installation: acpd-filterreg 0.2.0
+    Uninstalling acpd-filterreg-0.2.0:
+      Successfully uninstalled acpd-filterreg-0.2.0
+Successfully installed acpd-filterreg-0.2.0
+
+✨ Pixi task (build-cpp in cpp): python -m pip install --no-deps --no-build-isolation -e ./cpp
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Obtaining file:///home/inaho-omen/Project/acpd_filterreg_rs/cpp
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: acpd-filterreg-cpp
+  Building editable for acpd-filterreg-cpp (pyproject.toml): started
+  Building editable for acpd-filterreg-cpp (pyproject.toml): finished with status 'done'
+  Created wheel for acpd-filterreg-cpp: filename=acpd_filterreg_cpp-0.2.0-cp312-cp312-linux_x86_64.whl size=251455 sha256=0b9d0a7a10dade4bb02c94a08be7675cc6c8a008b36969ca78b5528baf0f33f7
+  Stored in directory: /tmp/pip-ephem-wheel-cache-5g7qpyaj/wheels/5c/81/70/965e3cfcad02251561d910b365d5055aa62c736c8ab6a5400b
+Successfully built acpd-filterreg-cpp
+Installing collected packages: acpd-filterreg-cpp
+  Attempting uninstall: acpd-filterreg-cpp
+    Found existing installation: acpd-filterreg-cpp 0.2.0
+    Uninstalling acpd-filterreg-cpp-0.2.0:
+      Successfully uninstalled acpd-filterreg-cpp-0.2.0
+Successfully installed acpd-filterreg-cpp-0.2.0
+
+✨ Pixi task (core-cpp in cpp): python tools/manage.py core-cpp
++ cmake -S /home/inaho-omen/Project/acpd_filterreg_rs/cpp -B /home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/core -G Ninja -DACPD_BUILD_PYTHON=OFF -DACPD_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+-- The CXX compiler identification is GNU 15.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (0.7s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/core
++ cmake --build /home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/core --config Release --parallel 2
+[1/11] Building CXX object CMakeFiles/acpd_core.dir/src/lattice.cpp.o
+[2/11] Building CXX object CMakeFiles/acpd_core.dir/src/types.cpp.o
+[3/11] Building CXX object CMakeFiles/acpd_core.dir/src/gaussian.cpp.o
+[4/11] Building CXX object CMakeFiles/acpd_core.dir/src/analytic.cpp.o
+[5/11] Building CXX object CMakeFiles/acpd_core.dir/src/rigid.cpp.o
+[6/11] Building CXX object CMakeFiles/acpd_core.dir/src/registration.cpp.o
+[7/11] Linking CXX static library libacpd_core.a
+[8/11] Building CXX object CMakeFiles/acpd_test_driver.dir/tests/driver.cpp.o
+[9/11] Linking CXX executable acpd_test_driver
+[10/11] Building CXX object CMakeFiles/acpd_core_tests.dir/tests/core_tests.cpp.o
+[11/11] Linking CXX executable acpd_core_tests
++ ctest --test-dir /home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/core -C Release --output-on-failure
+Test project /home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/core
+    Start 1: acpd_core_tests
+1/1 Test #1: acpd_core_tests ..................   Passed    0.14 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.14 sec
+
+✨ Pixi task (test-cpp in cpp): python tools/manage.py test-cpp
++ /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/python -m pytest tests/test_reference.py tests/test_api.py tests/test_core_reference.py tests/test_native_boundary.py --native-engine cpp --driver /home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/core/acpd_test_driver
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/inaho-omen/Project/acpd_filterreg_rs
+configfile: pyproject.toml
+collected 164 items
+
+tests/test_reference.py ................................................ [ 29%]
+..........                                                               [ 35%]
+tests/test_api.py .....................................................  [ 67%]
+tests/test_core_reference.py ........................................    [ 92%]
+tests/test_native_boundary.py .............                              [100%]
+
+============================= 164 passed in 4.45s ==============================

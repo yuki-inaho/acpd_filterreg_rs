@@ -1,0 +1,31 @@
+✨ Pixi task (build-api in rust): python -m pip install --no-deps --no-build-isolation -e .
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Obtaining file:///home/inaho-omen/Project/acpd_filterreg_rs
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: acpd-filterreg
+  Building editable for acpd-filterreg (pyproject.toml): started
+  Building editable for acpd-filterreg (pyproject.toml): finished with status 'done'
+  Created wheel for acpd-filterreg: filename=acpd_filterreg-0.2.0-0.editable-py3-none-any.whl size=6810 sha256=6fce7a7ec84d68c82ccc10509885bd3067c125d82c7a0f753422f43662bf6ee8
+  Stored in directory: /tmp/pip-ephem-wheel-cache-lzc8du7f/wheels/65/65/08/3df494705cd0fdf5bd1efbb913443f0f728f5d49e05d5fad50
+Successfully built acpd-filterreg
+Installing collected packages: acpd-filterreg
+Successfully installed acpd-filterreg-0.2.0
+
+✨ Pixi task (build-rust in rust): python -m pip install --no-deps --no-build-isolation -e ./rust
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Obtaining file:///home/inaho-omen/Project/acpd_filterreg_rs/rust
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: acpd-filterreg-rs
+  Building editable for acpd-filterreg-rs (pyproject.toml): started
+  Building editable for acpd-filterreg-rs (pyproject.toml): finished with status 'done'
+  Created wheel for acpd-filterreg-rs: filename=acpd_filterreg_rs-0.2.0-cp312-cp312-linux_x86_64.whl size=9467 sha256=bf7decdb7b51ee78fe4dd853e3c24c7b981cd63eba0c1e8e88f90590466fe2fe
+  Stored in directory: /tmp/pip-ephem-wheel-cache-mrdwmae5/wheels/a8/8e/44/6775ba16e265470db944a172fc1ab0804df83f28262db6e6e3
+Successfully built acpd-filterreg-rs
+Installing collected packages: acpd-filterreg-rs
+Successfully installed acpd-filterreg-rs-0.2.0
