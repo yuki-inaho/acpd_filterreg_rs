@@ -1,0 +1,4 @@
++ /opt/pyvenv/bin/python -m pip download --no-deps --only-binary=:all: --retries 0 --timeout 10 --index-url https://pypi.org/simple --dest /mnt/data/review_work/dependency-download nanobind==2.12.0
+WARNING: The directory '/home/oai/.cache/pip' or its parent directory is not owned or is not writable by the current user. The cache has been disabled. Check the permissions and owner of that directory. If executing pip with sudo, you should use sudo's -H flag.
+ERROR: Could not find a version that satisfies the requirement nanobind==2.12.0 (from versions: none)
+ERROR: No matching distribution found for nanobind==2.12.0

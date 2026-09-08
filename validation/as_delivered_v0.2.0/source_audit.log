@@ -1,0 +1,2 @@
+Source inspection: 26 option keys, 5 exports, 90 Rust tests present.
+SOURCE_ONLY: these checks do not establish compilation or numerical correctness in Rust.

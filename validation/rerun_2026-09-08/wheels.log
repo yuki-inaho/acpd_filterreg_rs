@@ -1,0 +1,122 @@
+✨ Pixi task (wheel-api in default): python -m build --no-isolation --wheel . --outdir dist
+* Getting build dependencies for wheel...
+/home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/default/lib/python3.12/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsDeprecationWarning: `project.license` as a TOML table is deprecated
+!!
+
+        ********************************************************************************
+        Please use a simple string containing a SPDX expression for `project.license`. You can also use `project.license-files`. (Both options available on setuptools>=77.0.0).
+
+        By 2027-Feb-18, you need to update your project and remove deprecated calls
+        or your builds will no longer be supported.
+
+        See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+        ********************************************************************************
+
+!!
+  corresp(dist, value, root_dir)
+running egg_info
+creating python/acpd_filterreg.egg-info
+writing python/acpd_filterreg.egg-info/PKG-INFO
+writing dependency_links to python/acpd_filterreg.egg-info/dependency_links.txt
+writing requirements to python/acpd_filterreg.egg-info/requires.txt
+writing top-level names to python/acpd_filterreg.egg-info/top_level.txt
+writing manifest file 'python/acpd_filterreg.egg-info/SOURCES.txt'
+reading manifest file 'python/acpd_filterreg.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'python/acpd_filterreg.egg-info/SOURCES.txt'
+* Building wheel...
+/home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/default/lib/python3.12/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsDeprecationWarning: `project.license` as a TOML table is deprecated
+!!
+
+        ********************************************************************************
+        Please use a simple string containing a SPDX expression for `project.license`. You can also use `project.license-files`. (Both options available on setuptools>=77.0.0).
+
+        By 2027-Feb-18, you need to update your project and remove deprecated calls
+        or your builds will no longer be supported.
+
+        See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+        ********************************************************************************
+
+!!
+  corresp(dist, value, root_dir)
+running bdist_wheel
+running build
+running build_py
+creating build/lib/acpd_filterreg
+copying python/acpd_filterreg/_result.py -> build/lib/acpd_filterreg
+copying python/acpd_filterreg/_options.py -> build/lib/acpd_filterreg
+copying python/acpd_filterreg/_validation.py -> build/lib/acpd_filterreg
+copying python/acpd_filterreg/__init__.py -> build/lib/acpd_filterreg
+copying python/acpd_filterreg/_mapping.py -> build/lib/acpd_filterreg
+copying python/acpd_filterreg/_api.py -> build/lib/acpd_filterreg
+running egg_info
+writing python/acpd_filterreg.egg-info/PKG-INFO
+writing dependency_links to python/acpd_filterreg.egg-info/dependency_links.txt
+writing requirements to python/acpd_filterreg.egg-info/requires.txt
+writing top-level names to python/acpd_filterreg.egg-info/top_level.txt
+reading manifest file 'python/acpd_filterreg.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'python/acpd_filterreg.egg-info/SOURCES.txt'
+copying python/acpd_filterreg/py.typed -> build/lib/acpd_filterreg
+installing to build/bdist.linux-x86_64/wheel
+running install
+running install_lib
+creating build/bdist.linux-x86_64/wheel
+creating build/bdist.linux-x86_64/wheel/acpd_filterreg
+copying build/lib/acpd_filterreg/_result.py -> build/bdist.linux-x86_64/wheel/./acpd_filterreg
+copying build/lib/acpd_filterreg/_options.py -> build/bdist.linux-x86_64/wheel/./acpd_filterreg
+copying build/lib/acpd_filterreg/_validation.py -> build/bdist.linux-x86_64/wheel/./acpd_filterreg
+copying build/lib/acpd_filterreg/py.typed -> build/bdist.linux-x86_64/wheel/./acpd_filterreg
+copying build/lib/acpd_filterreg/__init__.py -> build/bdist.linux-x86_64/wheel/./acpd_filterreg
+copying build/lib/acpd_filterreg/_mapping.py -> build/bdist.linux-x86_64/wheel/./acpd_filterreg
+copying build/lib/acpd_filterreg/_api.py -> build/bdist.linux-x86_64/wheel/./acpd_filterreg
+running install_egg_info
+Copying python/acpd_filterreg.egg-info to build/bdist.linux-x86_64/wheel/./acpd_filterreg-0.2.0-py3.12.egg-info
+running install_scripts
+creating build/bdist.linux-x86_64/wheel/acpd_filterreg-0.2.0.dist-info/WHEEL
+creating '/home/inaho-omen/Project/acpd_filterreg_rs/dist/.tmp-68xnwr0l/acpd_filterreg-0.2.0-py3-none-any.whl' and adding 'build/bdist.linux-x86_64/wheel' to it
+adding 'acpd_filterreg/__init__.py'
+adding 'acpd_filterreg/_api.py'
+adding 'acpd_filterreg/_mapping.py'
+adding 'acpd_filterreg/_options.py'
+adding 'acpd_filterreg/_result.py'
+adding 'acpd_filterreg/_validation.py'
+adding 'acpd_filterreg/py.typed'
+adding 'acpd_filterreg-0.2.0.dist-info/licenses/LICENSE'
+adding 'acpd_filterreg-0.2.0.dist-info/METADATA'
+adding 'acpd_filterreg-0.2.0.dist-info/WHEEL'
+adding 'acpd_filterreg-0.2.0.dist-info/top_level.txt'
+adding 'acpd_filterreg-0.2.0.dist-info/RECORD'
+removing build/bdist.linux-x86_64/wheel
+Successfully built acpd_filterreg-0.2.0-py3-none-any.whl
+
+✨ Pixi task (wheel-cpp in default): python -m build --no-isolation --wheel ./cpp --outdir dist
+* Getting build dependencies for wheel...
+* Building wheel...
+*** scikit-build-core 0.12.2 using CMake 4.2.3 (wheel)
+*** Configuring CMake...
+loading initial cache file build/cp312-cp312-linux_x86_64/CMakeInit.txt
+-- Configuring done (0.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/cp312-cp312-linux_x86_64
+*** Building project with Ninja...
+ninja: no work to do.
+*** Installing project into wheel...
+-- Install configuration: "Release"
+-- Installing: /tmp/tmpg3ys0pfv/wheel/platlib/acpd_filterreg_cpp/_native.cpython-312-x86_64-linux-gnu.so
+*** Making wheel...
+*** Created acpd_filterreg_cpp-0.2.0-cp312-cp312-linux_x86_64.whl
+Successfully built acpd_filterreg_cpp-0.2.0-cp312-cp312-linux_x86_64.whl
+
+✨ Pixi task (wheel-rust in default): python -m build --no-isolation --wheel ./rust --outdir dist
+* Getting build dependencies for wheel...
+* Building wheel...
+Running `maturin pep517 build-wheel -i /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/default/bin/python --compatibility off`
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.12 at /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/default/bin/python
+🔗 Found pyo3 bindings
+📡 Using build options bindings from pyproject.toml
+    Finished `release` profile [optimized] target(s) in 0.10s
+📦 Built wheel for CPython 3.12 to /home/inaho-omen/Project/acpd_filterreg_rs/rust/target/wheels/acpd_filterreg_rs-0.2.0-cp312-cp312-linux_x86_64.whl
+/home/inaho-omen/Project/acpd_filterreg_rs/rust/target/wheels/acpd_filterreg_rs-0.2.0-cp312-cp312-linux_x86_64.whl
+Successfully built acpd_filterreg_rs-0.2.0-cp312-cp312-linux_x86_64.whl

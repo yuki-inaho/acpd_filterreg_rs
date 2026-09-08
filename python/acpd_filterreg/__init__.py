@@ -4,7 +4,7 @@ from ._api import (NativeExtensionUnavailableError, PosteriorStatistics, backend
                    registration_analytic, registration_nonrigid, registration_rigid, permutohedral_filter, LatticeResult)
 from ._options import AnalyticOptions, FilterRegOptions
 from ._result import AnalyticStep, Iteration, RegistrationResult, StageResult, load_result
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = ["AnalyticOptions", "FilterRegOptions", "RegistrationResult", "StageResult", "Iteration",
            "AnalyticStep", "NativeExtensionUnavailableError", "PosteriorStatistics", "registration",
            "registration_rigid", "registration_analytic", "registration_nonrigid", "gaussian_sum",

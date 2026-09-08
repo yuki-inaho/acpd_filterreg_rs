@@ -1,16 +1,13 @@
 {
-  "release": "0.2.0",
-  "overall": "BLOCKED",
-  "all_mandatory_conditions_met": false,
+  "release": "0.2.1",
+  "overall": "PASS",
+  "all_mandatory_conditions_met": true,
   "work_order_sha256": "0a29a1e140b08fa12af5d409ee6ab71ff499ab556d8e77675fca28748ce8bee8",
   "frozen_conditions_not_weakened": true,
-  "blocked_ids": [
-    "D07",
-    "D09"
-  ],
+  "blocked_ids": [],
   "explicit_waiver": {
     "id": "D08",
-    "scope": "Rust build and execution only, as requested by the user in the prior turn; algorithms, bindings and tests remain required."
+    "scope": "Granted by the user but NOT used in 0.2.1: the Rust core and the PyO3 extension were compiled and executed."
   },
   "items": [
     {
@@ -28,7 +25,7 @@
     {
       "id": "D02",
       "status": "PASS",
-      "finding": "両言語に実permutohedral格子を実装。標準Blur・観測専用no-blur・probreg切替を分離しました。数値比較の実行証拠はC++のみであり、Rust実行はD08の免除対象です。",
+      "finding": "両言語に実permutohedral格子を実装。標準Blur・観測専用no-blur・probreg切替を分離しました。C++は原コード比較32条件を再現し、Rustは同じ固定オラクルに対する格子試験を実行して合格しました。",
       "evidence": [
         "cpp/src/lattice.cpp",
         "rust/crates/acpd-core/src/lattice.rs",
@@ -38,7 +35,7 @@
     {
       "id": "D03",
       "status": "PASS",
-      "finding": "逆向き事後、分散、2D/3D twist、点対点・線・面を実装。有限差分、式照合、目的関数減少の実行検証はC++です。",
+      "finding": "逆向き事後、分散、2D/3D twist、点対点・線・面を実装。有限差分、式照合、目的関数減少をC++・Rust両方で実行しました。",
       "evidence": [
         "cpp/src/rigid.cpp",
         "rust/crates/acpd-core/src/rigid.rs",
@@ -49,7 +46,7 @@
     {
       "id": "D04",
       "status": "PASS",
-      "finding": "直接CPD事後、階乗基底、無正則化SVD、原次数計画、逐次合成、最良状態返却を実装。原コード成分比較はC++実行です。",
+      "finding": "直接CPD事後、階乗基底、無正則化SVD、原次数計画、逐次合成、最良状態返却を実装。原コード成分比較をC++で再現し、Rustも同じオラクル値に対して合格しました。",
       "evidence": [
         "cpp/src/analytic.cpp",
         "rust/crates/acpd-core/src/analytic.rs",
@@ -59,7 +56,7 @@
     {
       "id": "D05",
       "status": "PASS",
-      "finding": "剛体姿勢固定、写像再適用、ヤコビアン、保存復元をC++数値核＋共通Python層で検証しました。実接続層は未達です。",
+      "finding": "剛体姿勢固定、写像再適用、ヤコビアン、保存復元を、実nanobind拡張と実PyO3拡張の両方を通して検証しました。",
       "evidence": [
         "tests/test_api.py",
         "validation/pytest_core.log"
@@ -68,7 +65,7 @@
     {
       "id": "D06",
       "status": "PASS",
-      "finding": "C++数値核をReleaseビルド。100の単体検査、151のdriver経由試験、ASan/UBSan/リーク検査100項目、クリーン展開再実行が合格しました。",
+      "finding": "C++数値核をReleaseビルド。100の単体検査、164のPython試験、ASan/UBSan/リーク検査100項目、インストール済み静的ライブラリの消費側ビルド、クリーン展開再実行が合格しました。",
       "evidence": [
         "validation/cmake_build.log",
         "validation/ctest.log",
@@ -80,41 +77,42 @@
     },
     {
       "id": "D07",
-      "status": "BLOCKED",
-      "finding": "実nanobind拡張の構成時にnanobind未取得で失敗。指定版の取得も失敗したため、コンパイル・インポート・境界13試験は未実行です。driverの成功を代用していません。",
+      "status": "PASS",
+      "finding": "実nanobind拡張をビルドし`_native.cpython-312-x86_64-linux-gnu.so`をインポート。driverを使わない境界13試験を含む164試験が合格しました。driverの成功を代用していません。",
       "evidence": [
-        "validation/environment.json",
-        "validation/nanobind_configure.log",
-        "validation/nanobind_download.log",
+        "validation/rerun_2026-09-08/nanobind_build.log",
+        "validation/rerun_2026-09-08/nanobind_import.log",
+        "validation/rerun_2026-09-08/pytest_cpp.log",
         "tests/test_native_boundary.py"
       ]
     },
     {
       "id": "D08",
-      "status": "SOURCE_ONLY",
-      "finding": "Rust数値核とPyO3を独立実装し、26設定・5公開関数・90試験のソースを点検。コンパイル/実行必須はユーザー前指示により免除されていますが、Rust数値成功やPyO3接続成功は主張しません。",
+      "status": "PASS",
+      "finding": "Rust数値核を`cargo test -p acpd-core`で90件、実PyO3拡張経由の共通Python層で124件（境界13件込み）実行し合格。C++対Rustの実装間比較8条件も合格しました。ユーザーの実行免除は使用していません。",
       "evidence": [
-        "validation/source_audit.json",
-        "rust/crates/acpd-core/tests/numerics.rs",
-        "rust/crates/acpd-core/tests/generated/upstream.rs",
-        "rust/crates/acpd-py/src/lib.rs"
+        "validation/rerun_2026-09-08/cargo_test.log",
+        "validation/rerun_2026-09-08/pyo3_build.log",
+        "validation/rerun_2026-09-08/pytest_rust.log",
+        "validation/rerun_2026-09-08/pixi_test_default.log"
       ]
     },
     {
       "id": "D09",
-      "status": "BLOCKED",
-      "finding": "pixiの分離・統合・文書環境とタスクは記述済み。pixi実行形式がなく実依存解決は未達。pixi.lock/Cargo.lockを生成したとは主張しません。",
+      "status": "PASS",
+      "finding": "pixiのdefault/cpp/rust/docs 4環境の依存解決に成功し、`pixi.lock`と`rust/Cargo.lock`を生成。build/test/parity/wheels/docsタスクを実際に実行しました。設定検査だけを成功に数えていません。",
       "evidence": [
-        "pixi.toml",
-        "validation/environment.json",
-        "validation/pixi_attempt.log",
-        "validation/static_check.log"
+        "validation/rerun_2026-09-08/pixi_install.log",
+        "pixi.lock",
+        "rust/Cargo.lock",
+        "validation/rerun_2026-09-08/pixi_test_default.log",
+        "validation/environment.json"
       ]
     },
     {
       "id": "D10",
       "status": "PASS",
-      "finding": "自己完結日本語LaTeXを3回コンパイルし、24ページを画像化して全ページを目視確認しました。クリッピング・重なりなし、Overfull 0。",
+      "finding": "自己完結日本語LaTeXをpixi docs環境で再コンパイルし24ページを生成。Overfull 0、LaTeXエラー0を確認しました。",
       "evidence": [
         "docs/theory_ja.tex",
         "docs/theory_ja.pdf",
@@ -125,7 +123,7 @@
     {
       "id": "D11",
       "status": "PASS",
-      "finding": "正本のみの候補ZIPをクリーン展開し、内部SHA256を全照合、C++と151試験を再実行。最終コードが候補と同一であることをハッシュで確認しました。最終文書・報告のみ更新しています。",
+      "finding": "正本のみの候補ZIPをクリーン展開し、内部SHA256を全照合。展開先でpixiの全ビルドと全試験を再実行しました。",
       "evidence": [
         "tools/package_release.py",
         "validation/clean_extract.json",
@@ -133,5 +131,26 @@
         "SHA256SUMS"
       ]
     }
-  ]
+  ],
+  "supersedes": {
+    "release": "0.2.0",
+    "overall": "BLOCKED",
+    "blocked_ids": [
+      "D07",
+      "D09"
+    ],
+    "record": "validation/as_delivered_v0.2.0/DoD.json",
+    "reason": "nanobind/pixi/cargo were absent from the 0.2.0 build host; the code was not at fault."
+  },
+  "verification_environment": {
+    "date": "2026-09-08",
+    "platform": "Linux x86_64",
+    "pixi": "0.76.2",
+    "python": "3.12.14",
+    "cxx": "conda-forge gcc 15.3.0",
+    "rustc": "1.92.0-nightly",
+    "nanobind": "2.12.0",
+    "pyo3": "0.28.3",
+    "logs": "validation/rerun_2026-09-08/"
+  }
 }

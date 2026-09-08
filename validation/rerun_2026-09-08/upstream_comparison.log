@@ -1,0 +1,45 @@
+{
+  "execution_path": "C++ standalone driver, NOT nanobind/PyO3",
+  "fixture_sha256": "a2873d3a1527c11298c0238a62a0268b25fb946e9b0de281621e3ea1baf4a187",
+  "groups": {
+    "permutohedral": {
+      "cases": 32,
+      "max_absolute_difference": 9.205878575002657e-07,
+      "all_structural_checks_equal": true,
+      "pass": true
+    },
+    "cpd_posterior": {
+      "cases": 6,
+      "max_absolute_difference": 3.552713678800501e-15,
+      "all_structural_checks_equal": true,
+      "pass": true
+    },
+    "taylor_basis": {
+      "cases": 12,
+      "max_absolute_difference": 5.551115123125783e-17,
+      "all_structural_checks_equal": true,
+      "pass": true
+    },
+    "analytic_mstep": {
+      "cases": 8,
+      "max_absolute_difference": 5.995204332975845e-15,
+      "all_structural_checks_equal": true,
+      "pass": true
+    },
+    "degree_schedule": {
+      "cases": 24,
+      "max_absolute_difference": 0.0,
+      "all_structural_checks_equal": true,
+      "pass": true
+    },
+    "original_filterreg_simplex": {
+      "cases": 2,
+      "max_absolute_difference": 2.401728996792585e-07,
+      "all_structural_checks_equal": true,
+      "pass": true
+    }
+  },
+  "all_pass": true,
+  "upstream_lattice_precision": "float32; release float64",
+  "scope": "component equivalence, not full-paper benchmark or accuracy guarantee"
+}

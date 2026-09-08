@@ -1,2 +1,2 @@
 + cargo --version
-[Errno 2] No such file or directory: 'cargo'
+cargo 1.92.0-nightly (81c3f77a4 2025-10-10)

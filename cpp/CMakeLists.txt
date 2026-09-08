@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25...4.2)
-project(acpd_filterreg_cpp VERSION 0.2.0 LANGUAGES CXX)
+project(acpd_filterreg_cpp VERSION 0.2.1 LANGUAGES CXX)
 option(ACPD_BUILD_PYTHON "Build the nanobind extension" ON)
 option(ACPD_INSTALL_CORE "Install the reusable C++ core and its headers" OFF)
 option(ACPD_BUILD_TESTS "Build native tests and the test driver" OFF)

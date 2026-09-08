@@ -1,0 +1,3 @@
+✨ Pixi task (static-check in default): python tools/manage.py static-check
+Python/TOML syntax, task dependencies, frozen DoD and Rust placeholder scan: PASS
+This is not a Rust, PyO3, nanobind or pixi execution test.

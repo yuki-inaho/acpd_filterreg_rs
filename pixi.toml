@@ -1,6 +1,6 @@
 [workspace]
 name = "acpd-filterreg-faithful"
-version = "0.2.0"
+version = "0.2.1"
 channels = ["conda-forge"]
 platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
 description = "Paper-traceable 2D/3D FilterReg and compositional Analytic-CPD"

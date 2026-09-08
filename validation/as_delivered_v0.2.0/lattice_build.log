@@ -1,0 +1,37 @@
+$ c++ -std=c++17 -O2 -U__SSE__ -I/mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen /mnt/data/review_work/oracles/lattice_reference_driver.cpp /mnt/data/review_work/oracles/permutohedral.cpp -o /mnt/data/review_work/oracles/lattice_reference
+In file included from /mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/Core:448,
+                 from /mnt/data/review_work/oracles/permutohedral.h:34,
+                 from /mnt/data/review_work/oracles/lattice_reference_driver.cpp:1:
+/mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/src/Core/functors/StlFunctors.h:87:28: warning: ‘template<class _Predicate> class std::unary_negate’ is deprecated [-Wdeprecated-declarations]
+   87 | struct functor_traits<std::unary_negate<T> >
+      |                            ^~~~~~~~~~~~
+In file included from /usr/include/c++/14/bits/refwrap.h:39,
+                 from /usr/include/c++/14/vector:68,
+                 from /mnt/data/review_work/oracles/permutohedral.h:29:
+/usr/include/c++/14/bits/stl_function.h:1021:33: note: declared here
+ 1021 |     class _GLIBCXX17_DEPRECATED unary_negate
+      |                                 ^~~~~~~~~~~~
+/mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/src/Core/functors/StlFunctors.h:91:28: warning: ‘template<class _Predicate> class std::binary_negate’ is deprecated [-Wdeprecated-declarations]
+   91 | struct functor_traits<std::binary_negate<T> >
+      |                            ^~~~~~~~~~~~~
+/usr/include/c++/14/bits/stl_function.h:1048:33: note: declared here
+ 1048 |     class _GLIBCXX17_DEPRECATED binary_negate
+      |                                 ^~~~~~~~~~~~~
+In file included from /mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/Core:448,
+                 from /mnt/data/review_work/oracles/permutohedral.h:34,
+                 from /mnt/data/review_work/oracles/permutohedral.cpp:28:
+/mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/src/Core/functors/StlFunctors.h:87:28: warning: ‘template<class _Predicate> class std::unary_negate’ is deprecated [-Wdeprecated-declarations]
+   87 | struct functor_traits<std::unary_negate<T> >
+      |                            ^~~~~~~~~~~~
+In file included from /usr/include/c++/14/bits/refwrap.h:39,
+                 from /usr/include/c++/14/vector:68,
+                 from /mnt/data/review_work/oracles/permutohedral.h:29:
+/usr/include/c++/14/bits/stl_function.h:1021:33: note: declared here
+ 1021 |     class _GLIBCXX17_DEPRECATED unary_negate
+      |                                 ^~~~~~~~~~~~
+/mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/src/Core/functors/StlFunctors.h:91:28: warning: ‘template<class _Predicate> class std::binary_negate’ is deprecated [-Wdeprecated-declarations]
+   91 | struct functor_traits<std::binary_negate<T> >
+      |                            ^~~~~~~~~~~~~
+/usr/include/c++/14/bits/stl_function.h:1048:33: note: declared here
+ 1048 |     class _GLIBCXX17_DEPRECATED binary_negate
+      |                                 ^~~~~~~~~~~~~

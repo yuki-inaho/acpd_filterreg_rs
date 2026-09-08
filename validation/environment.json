@@ -1,41 +1,41 @@
 {
-  "python": "3.13.5 (main, Jul 15 2026, 20:25:40) [GCC 14.2.0]",
-  "platform": "Linux-6.18.35-x86_64-with-glibc2.41",
+  "python": "3.12.14 (main, Sep  2 2026, 23:27:36) [GCC 15.3.0]",
+  "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39",
   "executables": {
-    "c++": "/usr/bin/c++",
-    "cmake": "/usr/bin/cmake",
-    "ninja": "/usr/bin/ninja",
-    "rustc": null,
-    "cargo": null,
-    "pixi": null,
+    "c++": "/home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/c++",
+    "cmake": "/home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/cmake",
+    "ninja": "/home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/ninja",
+    "rustc": "/home/inaho-omen/.cargo/bin/rustc",
+    "cargo": "/home/inaho-omen/.cargo/bin/cargo",
+    "pixi": "/home/inaho-omen/.pixi/bin/pixi",
     "xelatex": "/usr/bin/xelatex",
     "tectonic": null
   },
   "python_modules": {
     "numpy": true,
     "pytest": true,
-    "nanobind": false,
+    "nanobind": true,
     "maturin": false,
-    "scikit_build_core": false
+    "scikit_build_core": true
   },
   "attempts": [
     {
       "command": [
         "cmake",
         "-S",
-        "/mnt/data/acpd_filterreg_faithful/cpp",
+        "/home/inaho-omen/Project/acpd_filterreg_rs/cpp",
         "-B",
-        "/mnt/data/review_work/build-boundary",
+        "/home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/boundary-probe",
         "-DACPD_BUILD_PYTHON=ON",
         "-DACPD_BUILD_TESTS=OFF",
         "-DCMAKE_BUILD_TYPE=Release"
       ],
-      "started_unix": 1788795791.7357235,
-      "cwd": "/mnt/data/acpd_filterreg_faithful",
-      "returncode": 1,
-      "status": "BLOCKED",
+      "started_unix": 1788826798.8679307,
+      "cwd": "/home/inaho-omen/Project/acpd_filterreg_rs",
+      "returncode": 0,
+      "status": "PASS",
       "log": "nanobind_configure.log",
-      "elapsed_seconds": 6.399898290634155
+      "elapsed_seconds": 2.345999240875244
     },
     {
       "command": [
@@ -44,30 +44,28 @@
         "-e",
         "cpp"
       ],
-      "started_unix": 1788795798.135648,
-      "cwd": "/mnt/data/acpd_filterreg_faithful",
-      "returncode": null,
-      "status": "BLOCKED",
-      "reason": "executable_not_found",
+      "started_unix": 1788826801.2139666,
+      "cwd": "/home/inaho-omen/Project/acpd_filterreg_rs",
+      "returncode": 0,
+      "status": "PASS",
       "log": "pixi_attempt.log",
-      "elapsed_seconds": 0.0004296302795410156
+      "elapsed_seconds": 0.20648956298828125
     },
     {
       "command": [
         "cargo",
         "--version"
       ],
-      "started_unix": 1788795798.1360862,
-      "cwd": "/mnt/data/acpd_filterreg_faithful",
-      "returncode": null,
-      "status": "BLOCKED",
-      "reason": "executable_not_found",
+      "started_unix": 1788826801.420499,
+      "cwd": "/home/inaho-omen/Project/acpd_filterreg_rs",
+      "returncode": 0,
+      "status": "PASS",
       "log": "rust_attempt.log",
-      "elapsed_seconds": 0.00022745132446289062
+      "elapsed_seconds": 0.18729567527770996
     },
     {
       "command": [
-        "/opt/pyvenv/bin/python",
+        "/home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/python",
         "-m",
         "pip",
         "download",
@@ -80,15 +78,15 @@
         "--index-url",
         "https://pypi.org/simple",
         "--dest",
-        "/mnt/data/review_work/dependency-download",
+        "/home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/dependency-download",
         "nanobind==2.12.0"
       ],
-      "started_unix": 1788795798.13632,
-      "cwd": "/mnt/data/acpd_filterreg_faithful",
-      "returncode": 1,
-      "status": "BLOCKED",
+      "started_unix": 1788826801.6078305,
+      "cwd": "/home/inaho-omen/Project/acpd_filterreg_rs",
+      "returncode": 0,
+      "status": "PASS",
       "log": "nanobind_download.log",
-      "elapsed_seconds": 0.9688434600830078
+      "elapsed_seconds": 1.8490233421325684
     }
   ]
 }

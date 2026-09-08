@@ -1,0 +1,158 @@
+{
+  "status": "SOURCE_ONLY",
+  "meaning": "Source inspection only. Rust/PyO3/nanobind not compiled by this audit.",
+  "option_keys": [
+    {
+      "option": "analytic_improvement_relative",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_initialization",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_max_degree",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_max_iterations",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_min_degree",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_min_iterations",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_min_mass",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_min_sigma2",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_no_improve_patience",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_rank_tolerance",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_rebound_relative",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_sigma2",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_stable_patience",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_tolerance",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "analytic_w",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "backend",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "method",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "rigid_inner_iterations",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "rigid_max_iterations",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "rigid_min_sigma2",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "rigid_objective",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "rigid_sigma2",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "rigid_solver",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "rigid_tolerance",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "rigid_update_sigma2",
+      "present_in_both_bindings": true
+    },
+    {
+      "option": "rigid_w",
+      "present_in_both_bindings": true
+    }
+  ],
+  "native_exports": [
+    "registration",
+    "gaussian_sum",
+    "posterior_stats",
+    "basis",
+    "permutohedral_filter"
+  ],
+  "rust_test_functions_present": 90,
+  "rust_core_independent_of_cpp": true,
+  "rust_core_forbids_unsafe_code": true,
+  "work_order_sha256": "0a29a1e140b08fa12af5d409ee6ab71ff499ab556d8e77675fca28748ce8bee8",
+  "own_native_source_sha256": {
+    "cpp/src/analytic.cpp": "38b68a7c7b593cb7eb5f6e40d32cf37f4c358d27b073c412e646335618e639d9",
+    "cpp/src/bindings.cpp": "19c537cab9461ec49fd06ccd72061e0307697baa06fd2f54513570598bdfafd2",
+    "cpp/src/gaussian.cpp": "32af1343b6bda8f4e1826ecd722f942bffe1adeb03b36e32ecb8312a166001ee",
+    "cpp/src/lattice.cpp": "515f09144e0f508dd689d5b0f61472ba2c51898e018d1889756aa573916de8e2",
+    "cpp/src/registration.cpp": "5c5c24c486dc0c23e500dc3fbaad39c7a78987775c2207777380272609e8f8ff",
+    "cpp/src/rigid.cpp": "b488157c1c74a0bfae106e03d87d2d4c78cf8d555315306fbe65d466776667e2",
+    "cpp/src/types.cpp": "76b5c3a1b5295c5346321fbdf9fb0c7355277d0874a1327a9199d576a94388fc",
+    "rust/crates/acpd-core/src/analytic.rs": "6567cf986ad6ba9a0aacddb7b9db612c6c4f93ab52488838c536005e4bf91b13",
+    "rust/crates/acpd-core/src/gaussian.rs": "6f91ed66e619025c08993451c106a643ee9d3c13c5a0e68752fb81f7bba1dde2",
+    "rust/crates/acpd-core/src/lattice.rs": "592b1c7ba0ffbc1754caba8324a085a4c43da5c9a61482498bf8910f74c66278",
+    "rust/crates/acpd-core/src/lib.rs": "9f82a04f645a99ef6b4d561f6a5f05a4d5f8f9e5f99bbd373ba0c05f0e68c85e",
+    "rust/crates/acpd-core/src/registration.rs": "f65aab017012111bf0afbbe40a2ad7b185cbb7901a6839250ee40523cfed6581",
+    "rust/crates/acpd-core/src/rigid.rs": "0cd6f456935d4eaa53e81750aab19cbfe9b5538c643624dee47c41fd0f7508d5",
+    "rust/crates/acpd-core/src/types.rs": "94b8caa0b980063b42f3fc4196ed67e01aec5767e7aaafbe62716463610f3cd1",
+    "rust/crates/acpd-py/src/lib.rs": "5f520ee3cc5a15def741e0226e54600bfda8cb03f182b847f6466e9329774b69"
+  },
+  "dependency_api_review": [
+    {
+      "dependency": "numpy 0.28.0",
+      "url": "https://docs.rs/numpy/0.28.0/numpy/trait.PyUntypedArrayMethods.html",
+      "checked": [
+        "is_aligned",
+        "is_c_contiguous",
+        "shape"
+      ]
+    },
+    {
+      "dependency": "nanobind",
+      "url": "https://nanobind.readthedocs.io/en/latest/ndarray.html",
+      "checked": [
+        "capsule owner lifetime",
+        "const input arrays",
+        "no implicit conversion"
+      ]
+    }
+  ]
+}

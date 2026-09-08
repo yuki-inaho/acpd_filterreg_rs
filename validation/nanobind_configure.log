@@ -1,17 +1,11 @@
-+ cmake -S /mnt/data/acpd_filterreg_faithful/cpp -B /mnt/data/review_work/build-boundary -DACPD_BUILD_PYTHON=ON -DACPD_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
--- The CXX compiler identification is GNU 14.2.0
++ cmake -S /home/inaho-omen/Project/acpd_filterreg_rs/cpp -B /home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/boundary-probe -DACPD_BUILD_PYTHON=ON -DACPD_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+-- The CXX compiler identification is GNU 15.3.0
 -- Detecting CXX compiler ABI info
 -- Detecting CXX compiler ABI info - done
--- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Check for working CXX compiler: /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/c++ - skipped
 -- Detecting CXX compile features
 -- Detecting CXX compile features - done
--- Found Python: /opt/pyvenv/bin/python3 (found suitable version "3.13.5", minimum required is "3.10") found components: Interpreter Development.Module
--- Configuring incomplete, errors occurred!
-/opt/pyvenv/bin/python3: No module named nanobind
-CMake Error at CMakeLists.txt:25 (execute_process):
-  execute_process failed command indexes:
-
-    1: "Child return code: 1"
-
-
-
+-- Found Python: /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/python3.12 (found suitable version "3.12.14", minimum required is "3.10") found components: Interpreter Development.Module
+-- Configuring done (2.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/inaho-omen/Project/acpd_filterreg_rs/cpp/build/boundary-probe

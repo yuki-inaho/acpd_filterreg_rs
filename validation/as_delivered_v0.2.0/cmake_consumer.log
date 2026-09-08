@@ -1,0 +1,18 @@
+-- The CXX compiler identification is GNU 14.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (0.2s)
+-- Generating done (0.0s)
+-- Build files have been written to: /mnt/data/review_work/consumer/build
+[ 50%] Building CXX object CMakeFiles/example.dir/mnt/data/acpd_filterreg_faithful/examples/native_core.cpp.o
+[100%] Linking CXX executable example
+[100%] Built target example
+returned analytic steps: 29
+analytic stop: stable_tolerance
+map reproduction error: 2.12315e-14
+returned analytic steps: 12
+analytic stop: stable_tolerance
+map reproduction error: 1.68844e-13

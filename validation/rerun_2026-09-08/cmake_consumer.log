@@ -1,0 +1,14 @@
+-- The CXX compiler identification is GNU 15.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (0.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /tmp/claude-1000/-home-inaho-omen-Project-cpd3d-rs/82e69e4c-2667-4e2e-9a7f-5fa4bdb5e178/scratchpad/work/build-consumer
+[1/2] Building CXX object CMakeFiles/consumer.dir/native_core.cpp.o
+[2/2] Linking CXX executable consumer
+returned analytic steps: 12
+analytic stop: stable_tolerance
+map reproduction error: 1.68844e-13

@@ -3,7 +3,7 @@ requires = ["maturin>=1.9,<2"]
 build-backend = "maturin"
 [project]
 name = "acpd-filterreg-rs"
-version = "0.2.0"
+version = "0.2.1"
 description = "Rust/PyO3 numerical engine for acpd-filterreg"
 requires-python = ">=3.10"
 readme = "README.md"

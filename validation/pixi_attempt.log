@@ -1,2 +1,2 @@
 + pixi install -e cpp
-[Errno 2] No such file or directory: 'pixi'
+✔ The cpp environment has been installed.

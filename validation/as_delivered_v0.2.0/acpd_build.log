@@ -1,0 +1,25 @@
+$ c++ -std=c++17 -O2 -I/mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen /mnt/data/review_work/oracles/acpd_reference_driver.cpp -o /mnt/data/review_work/oracles/acpd_reference
+In file included from /mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/Core:448,
+                 from /mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/Dense:1,
+                 from /mnt/data/review_work/oracles/acpd_reference.hpp:2,
+                 from /mnt/data/review_work/oracles/acpd_reference_driver.cpp:2:
+/mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/src/Core/functors/StlFunctors.h:87:28: warning: ‘template<class _Predicate> class std::unary_negate’ is deprecated [-Wdeprecated-declarations]
+   87 | struct functor_traits<std::unary_negate<T> >
+      |                            ^~~~~~~~~~~~
+In file included from /usr/include/c++/14/string:49,
+                 from /usr/include/c++/14/bits/locale_classes.h:40,
+                 from /usr/include/c++/14/bits/ios_base.h:41,
+                 from /usr/include/c++/14/ios:44,
+                 from /usr/include/c++/14/istream:40,
+                 from /usr/include/c++/14/sstream:40,
+                 from /usr/include/c++/14/complex:45,
+                 from /mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/Core:99:
+/usr/include/c++/14/bits/stl_function.h:1021:33: note: declared here
+ 1021 |     class _GLIBCXX17_DEPRECATED unary_negate
+      |                                 ^~~~~~~~~~~~
+/mnt/data/acpd_filterreg_faithful/cpp/third_party/eigen/Eigen/src/Core/functors/StlFunctors.h:91:28: warning: ‘template<class _Predicate> class std::binary_negate’ is deprecated [-Wdeprecated-declarations]
+   91 | struct functor_traits<std::binary_negate<T> >
+      |                            ^~~~~~~~~~~~~
+/usr/include/c++/14/bits/stl_function.h:1048:33: note: declared here
+ 1048 |     class _GLIBCXX17_DEPRECATED binary_negate
+      |                                 ^~~~~~~~~~~~~

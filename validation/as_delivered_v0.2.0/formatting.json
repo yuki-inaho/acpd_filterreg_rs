@@ -1,0 +1,138 @@
+{
+  "formatter": "Whitespace-only line splitting; not clang-format/rustfmt",
+  "files": [
+    {
+      "path": "cpp/src/analytic.cpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "e0332db3641b99db984cab025985e52986a73506603509fd17531ad91ee60562",
+      "sha256_after": "38b68a7c7b593cb7eb5f6e40d32cf37f4c358d27b073c412e646335618e639d9"
+    },
+    {
+      "path": "cpp/src/types.cpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "5c4b24e1600baa65bd69cbbe8f3d73ae2cc08b890167901f7592e357e59e70cc",
+      "sha256_after": "76b5c3a1b5295c5346321fbdf9fb0c7355277d0874a1327a9199d576a94388fc"
+    },
+    {
+      "path": "cpp/src/bindings.cpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "5c8da88f6d1847c22fa908be1afb6ac32a92364c0514c2da8175e7198d4da43b",
+      "sha256_after": "017f70e787eeb0774b2bef7faa2af49f56fc8e9b16bdaf8280e5a6d46fa17618"
+    },
+    {
+      "path": "cpp/src/registration.cpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "78060c85446c43197692145a73c59169439666db662e6344eac541a196cb7363",
+      "sha256_after": "5c5c24c486dc0c23e500dc3fbaad39c7a78987775c2207777380272609e8f8ff"
+    },
+    {
+      "path": "cpp/src/rigid.cpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "761be6297727b4e52e0a66f571ffcfd2c8614ad5b5218331f6fba7ad8476db24",
+      "sha256_after": "b488157c1c74a0bfae106e03d87d2d4c78cf8d555315306fbe65d466776667e2"
+    },
+    {
+      "path": "cpp/src/lattice.cpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "9a99a38eebda0fb14cc067bcdfc65fd48f6e076b381e39e6a3eeec2b6a4f3ee5",
+      "sha256_after": "515f09144e0f508dd689d5b0f61472ba2c51898e018d1889756aa573916de8e2"
+    },
+    {
+      "path": "cpp/src/gaussian.cpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "4678365fd21dc9ac781c0896cf4992482e723f738cee773d9c25dec3cb280f37",
+      "sha256_after": "32af1343b6bda8f4e1826ecd722f942bffe1adeb03b36e32ecb8312a166001ee"
+    },
+    {
+      "path": "cpp/include/acpd/analytic.hpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "d49985ef12a84758b5cede58e11ca407682d24c10003feb40913f27d5cd2eb80",
+      "sha256_after": "8fcfbedffb9820c16db4b00ce2b3aca75d2cd863dc8f5ea749ad9db551a72613"
+    },
+    {
+      "path": "cpp/include/acpd/rigid.hpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "3df863a26ca3745bfbe9420eaf77c9f83da4704fbf410b99f2e55d564279203d",
+      "sha256_after": "83cb0156126524faee9437c895c607a00b40ec2ece5a8026fa347432a698fc81"
+    },
+    {
+      "path": "cpp/include/acpd/lattice.hpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "46874e697700403966118a57ef8e4564e5bce7fca856bef5ef7ea061f4d5a4b1",
+      "sha256_after": "2605b7354e296998d29051cef0bc34867ce998f1be6fecbbaf7aded31fb3bc90"
+    },
+    {
+      "path": "cpp/include/acpd/gaussian.hpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "cb1d144b77e9e862d64b61ff70b2e65af6b981b4f3a4075b403e5267e1e93994",
+      "sha256_after": "7355672ab16b5bfb06186869bc6f2335f74317d90dc8a60ec41dc4c0b07ac155"
+    },
+    {
+      "path": "cpp/include/acpd/types.hpp",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "4b3755b7927ebaa45f2bde9a5fef0a4498179353bc469475ea6748d7f4214495",
+      "sha256_after": "5a4d703bc9308c4974cffe3f472a7424a242867001cbb679fa385b7e6d0f62cb"
+    },
+    {
+      "path": "rust/crates/acpd-core/src/types.rs",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "4c36b0a826a462d1cfd45ce3fd0cd29fe83e9caff882d47a9a0114923ad509c3",
+      "sha256_after": "94b8caa0b980063b42f3fc4196ed67e01aec5767e7aaafbe62716463610f3cd1"
+    },
+    {
+      "path": "rust/crates/acpd-core/src/analytic.rs",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "0078c119fd07416938e485568e4f971392e6c32a9ff36b4b325366a23b97779d",
+      "sha256_after": "6567cf986ad6ba9a0aacddb7b9db612c6c4f93ab52488838c536005e4bf91b13"
+    },
+    {
+      "path": "rust/crates/acpd-core/src/lib.rs",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "b3017470f586b3d3dc1faa4e0fea285847ed766d4e717b4960b7f1ca71c077c2",
+      "sha256_after": "9f82a04f645a99ef6b4d561f6a5f05a4d5f8f9e5f99bbd373ba0c05f0e68c85e"
+    },
+    {
+      "path": "rust/crates/acpd-core/src/lattice.rs",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "4b0bb04af712b047b7ff8a33236b7232a719cfe383671c1f447526cf216c4192",
+      "sha256_after": "592b1c7ba0ffbc1754caba8324a085a4c43da5c9a61482498bf8910f74c66278"
+    },
+    {
+      "path": "rust/crates/acpd-core/src/rigid.rs",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "9b19f6c337e0dba367fcda6f24db62c7fef5d97548af979ff618feec621555ea",
+      "sha256_after": "0cd6f456935d4eaa53e81750aab19cbfe9b5538c643624dee47c41fd0f7508d5"
+    },
+    {
+      "path": "rust/crates/acpd-core/src/gaussian.rs",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "1a921be8cc9ba53510100f4d979c1b7901ac68eebb37df20c3c9e69da5d77778",
+      "sha256_after": "6f91ed66e619025c08993451c106a643ee9d3c13c5a0e68752fb81f7bba1dde2"
+    },
+    {
+      "path": "rust/crates/acpd-core/src/registration.rs",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "224064dd620a3388fe54364871da6b9ba6d89da08dd875c85590753445dcad47",
+      "sha256_after": "f65aab017012111bf0afbbe40a2ad7b185cbb7901a6839250ee40523cfed6581"
+    },
+    {
+      "path": "rust/crates/acpd-py/src/lib.rs",
+      "nonwhitespace_tokens_identical": true,
+      "sha256_before": "c40e1f3c4ce7947c3697eb0b25883203305b116625a0f183c4fb5c7207422c71",
+      "sha256_after": "e28c3f5860fe6aa26b6a86f4d182f2c5f1ebd9a135e3e5bc300a4ad55cfef887"
+    }
+  ],
+  "scope": "Historical whitespace-formatting event. Later source changes are listed below; final file hashes are in source_audit.json and the release manifest.",
+  "post_format_changes": [
+    {
+      "path": "cpp/src/bindings.cpp",
+      "current_sha256": "19c537cab9461ec49fd06ccd72061e0307697baa06fd2f54513570598bdfafd2",
+      "reason": "Subsequent edits including GIL release for basis evaluation and whitespace cleanup; not covered by the earlier token-identity assertion."
+    },
+    {
+      "path": "rust/crates/acpd-py/src/lib.rs",
+      "current_sha256": "5f520ee3cc5a15def741e0226e54600bfda8cb03f182b847f6466e9329774b69",
+      "reason": "Subsequent edits including GIL release for basis evaluation and whitespace cleanup; not covered by the earlier token-identity assertion."
+    }
+  ]
+}
