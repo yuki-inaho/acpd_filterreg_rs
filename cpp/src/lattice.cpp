@@ -19,11 +19,13 @@ namespace acpd {
             throw std::invalid_argument("lattice features need finite shape (n,1..16), n>0");
         }
     }
-    Simplex enclosing_simplex(const Eigen::Ref<const Eigen::RowVectorXd>& f, bool blur) {
+    void enclosing_simplex(const Eigen::Ref<const Eigen::RowVectorXd>& f, bool blur, Simplex& out) {
         const int d=static_cast<int>(f.size()), width=d+1;
-        if (d<1 || d>16 || !f.allFinite()) throw std::invalid_argument("invalid lattice feature");
-        std::vector<double> elevated(width), rem(width), bary(width+1,0.0);
-        std::vector<int> rank(width,0);
+        if (d<1 || d>max_lattice_dimension || !f.allFinite()) throw std::invalid_argument("invalid lattice feature");
+        // Fixed-capacity scratch: d is bounded by max_lattice_dimension, so width<=17.
+        std::array<double,max_lattice_dimension+1> elevated{},rem{};
+        std::array<double,max_lattice_dimension+2> bary{};
+        std::array<int,max_lattice_dimension+1> rank{};
         // Blur changes the variance of the lattice kernel. These two constants are
         // NOT interchangeable: sqrt(2/3)*(d+1) vs sqrt(1/6)*(d+1).
         const double inv_std=std::sqrt(blur ? 2.0/3.0 : 1.0/6.0)*width;
@@ -68,9 +70,8 @@ namespace acpd {
             bary[d-rank[i]+1]-=delta;
         }
         bary[0]+=1+bary[width];
-        Simplex out;
-        out.keys.resize(width,LatticeKey(d));
-        out.weights.resize(width);
+        out.keys.assign(static_cast<std::size_t>(width),LatticeKey(d));
+        out.weights.resize(static_cast<std::size_t>(width));
         for(int color=0;color<width;++color) {
             for(int axis=0;axis<d;++axis)
             out.keys[color][axis]=static_cast<std::int64_t>(rem[axis])+color-(rank[axis]>d-color?width:0);
@@ -78,6 +79,10 @@ namespace acpd {
             if(!std::isfinite(bary[color]) || bary[color]<-1e-8)
             throw NumericalError("invalid barycentric weight");
         }
+    }
+    Simplex enclosing_simplex(const Eigen::Ref<const Eigen::RowVectorXd>& f, bool blur) {
+        Simplex out;
+        enclosing_simplex(f,blur,out);
         return out;
     }
     Permutohedral::Permutohedral(const Matrix& features, bool blur)
@@ -87,8 +92,9 @@ namespace acpd {
         index.reserve(static_cast<std::size_t>(n_)*(d_+1));
         offsets_.reserve(static_cast<std::size_t>(n_)*(d_+1));
         barycentric_.reserve(offsets_.capacity());
+        Simplex simplex;
         for(int i=0;i<n_;++i) {
-            const auto simplex=enclosing_simplex(features.row(i),blur);
+            enclosing_simplex(features.row(i),blur,simplex);
             for(int j=0;j<=d_;++j) {
                 auto inserted=index.emplace(simplex.keys[j],keys_.size());
                 if(inserted.second) keys_.push_back(simplex.keys[j]);
@@ -122,10 +128,14 @@ namespace acpd {
         if(values.rows()!=n_ || values.cols()<1 || !values.allFinite() || start<0 || start>n_)
         throw std::invalid_argument("invalid lattice values or splat start");
         const auto count=static_cast<int>(keys_.size());
-        Matrix a=Matrix::Zero(count,values.cols()),b=Matrix::Zero(count,values.cols());
+        // Row-major accumulators and inputs: every operation below is one whole row,
+        // so this only changes memory layout, not the arithmetic or its order.
+        using RowMatrix=Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>;
+        const RowMatrix v=values;
+        RowMatrix a=RowMatrix::Zero(count,values.cols()),b=RowMatrix::Zero(count,values.cols());
         for(int i=start;i<n_;++i) for(int j=0;j<=d_;++j) {
             const std::size_t k=static_cast<std::size_t>(i)*(d_+1)+j;
-            a.row(offsets_[k])+=barycentric_[k]*values.row(i);
+            a.row(offsets_[k])+=barycentric_[k]*v.row(i);
         }
         if(with_blur_) for(int pass=0;pass<=d_;++pass) {
             const int axis=reverse?d_-pass:pass;
@@ -138,11 +148,12 @@ namespace acpd {
             a.swap(b);
         }
         const double gain=1.0/(1.0+std::ldexp(1.0,-d_));
-        Matrix out=Matrix::Zero(n_,values.cols());
+        RowMatrix sliced=RowMatrix::Zero(n_,values.cols());
         for(int i=0;i<n_;++i) for(int j=0;j<=d_;++j) {
             const std::size_t k=static_cast<std::size_t>(i)*(d_+1)+j;
-            out.row(i)+=(gain*barycentric_[k])*a.row(offsets_[k]);
+            sliced.row(i)+=(gain*barycentric_[k])*a.row(offsets_[k]);
         }
+        Matrix out=sliced;
         require_finite(out,"lattice filter");
         return out;
     }
@@ -152,8 +163,9 @@ namespace acpd {
         std::vector<std::size_t> offsets;
         std::vector<double> weights;
         index_.reserve(static_cast<std::size_t>(f.rows())*(d_+1));
+        Simplex s;
         for(int i=0;i<f.rows();++i) {
-            const auto s=enclosing_simplex(f.row(i),false);
+            enclosing_simplex(f.row(i),false,s);
             for(int j=0;j<=d_;++j) {
                 auto item=index_.emplace(s.keys[j],keys_.size());
                 if(item.second) keys_.push_back(s.keys[j]);
@@ -161,23 +173,27 @@ namespace acpd {
                 weights.push_back(s.weights[j]);
             }
         }
-        splatted_=Matrix::Zero(static_cast<int>(keys_.size()),v.cols());
+        splatted_.setZero(static_cast<int>(keys_.size()),v.cols());
+        const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> rows=v;
         for(int i=0;i<f.rows();++i) for(int j=0;j<=d_;++j) {
             const auto k=static_cast<std::size_t>(i)*(d_+1)+j;
-            splatted_.row(offsets[k])+=weights[k]*v.row(i);
+            splatted_.row(offsets[k])+=weights[k]*rows.row(i);
         }
     }
     Matrix FixedNoBlurLattice::slice(const Matrix& queries) const {
         check_features(queries);
         if(queries.cols()!=d_) throw std::invalid_argument("no-blur feature dimension mismatch");
-        Matrix out=Matrix::Zero(queries.rows(),splatted_.cols());
+        Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> sliced
+        =Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>::Zero(queries.rows(),splatted_.cols());
+        Simplex s;
         for(int i=0;i<queries.rows();++i) {
-            const auto s=enclosing_simplex(queries.row(i),false);
+            enclosing_simplex(queries.row(i),false,s);
             for(int j=0;j<=d_;++j) {
                 const auto found=index_.find(s.keys[j]);
-                if(found!=index_.end()) out.row(i)+=s.weights[j]*splatted_.row(found->second);
+                if(found!=index_.end()) sliced.row(i)+=s.weights[j]*splatted_.row(found->second);
             }
         }
+        Matrix out=sliced;
         require_finite(out,"no-blur slicing");
         return out;
     }
