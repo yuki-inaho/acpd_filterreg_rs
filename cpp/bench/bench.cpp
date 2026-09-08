@@ -57,6 +57,7 @@ int main(int argc,char** argv) {
     std::to_string(options.fgt.cluster_radius)));
     options.fgt.cutoff_radius=std::stod(argument(argc,argv,"--fgt-cutoff-radius",
     std::to_string(options.fgt.cutoff_radius)));
+    options.cuda.single_precision=integer(argc,argv,"--cuda-single-precision",0)!=0;
     // ACPD E-step backend, independent of the FilterReg backend above.
     options.analytic.backend=backend_from_string(argument(argc,argv,"--analytic-backend","direct"));
     if(stage=="estep") {
@@ -67,7 +68,7 @@ int main(int argc,char** argv) {
         int vertices=0;
         for(int r=0;r<reps;++r) {
             const Statistics statistics=posterior_statistics(fixed,moving,sigma2,0.1,true,options.backend,
-            Matrix(),nullptr,options.fgt);
+            Matrix(),nullptr,options.fgt,options.cuda);
             mass+=statistics.mass;
             vertices=statistics.vertices;
         }
@@ -75,6 +76,7 @@ int main(int argc,char** argv) {
         std::cout<<"{\"stage\":\"estep\",\"backend\":\""<<backend<<"\",\"n\":"<<n<<",\"d\":"<<d
         <<",\"reps\":"<<reps<<",\"seconds\":"<<seconds<<",\"lattice_vertices\":"<<vertices
         <<",\"sigma2\":"<<sigma2
+        <<",\"cuda_single_precision\":"<<(options.cuda.single_precision?1:0)
         <<",\"gaussian_pairs\":"<<(backend=="direct"?static_cast<long long>(n)*n:0LL)
         <<",\"checksum\":"<<mass<<"}\n";
         return 0;

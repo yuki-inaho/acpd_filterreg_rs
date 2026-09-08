@@ -4,8 +4,18 @@ import numpy as np
 import pytest
 import acpd_filterreg as reg
 
+
+def _backends():
+    """Backends both engines implement.
+
+    cuda is excluded because a parity case needs the same backend on both sides and
+    only the C++ engine has a device path. The Rust engine raises for it rather than
+    computing on the CPU, which tests/test_api.py asserts directly.
+    """
+    return tuple(b for b in reg.backend_names() if b != 'cuda')
+
 @pytest.mark.parametrize('d',[2,3])
-@pytest.mark.parametrize('backend',reg.backend_names())
+@pytest.mark.parametrize('backend',_backends())
 def test_cpp_rust_parity(d,backend):
     importlib.import_module('acpd_filterreg_cpp._native')
     importlib.import_module('acpd_filterreg_rs._native')

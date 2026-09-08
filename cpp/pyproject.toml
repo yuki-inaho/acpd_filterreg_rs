@@ -15,3 +15,8 @@ wheel.packages = ["python/acpd_filterreg_cpp"]
 wheel.license-files = ["LICENSES/*", "THIRD_PARTY_NOTICES.md"]
 cmake.build-type = "Release"
 build-dir = "build/{wheel_tag}"
+# CUDA is opt-in and off by default, so the wheel builds on machines without a
+# toolkit. Enable with, for example:
+#   pip install --no-build-isolation -e ./cpp \
+#     -C cmake.define.ACPD_ENABLE_CUDA=ON \
+#     -C cmake.define.ACPD_CUDA_HOST_COMPILER=/usr/bin/g++-13

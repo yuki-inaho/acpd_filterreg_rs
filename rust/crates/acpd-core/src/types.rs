@@ -28,14 +28,14 @@ pub(crate) fn numerical(s: &str) -> Error {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Backend {
-    Direct, Permutohedral, PermutohedralNoBlur, Probreg, Fgt
+    Direct, Permutohedral, PermutohedralNoBlur, Probreg, Fgt, Cuda
 }
 impl Backend {
     pub fn parse(s: &str) -> RegResult<Self> {
         match s {
             "direct" => Ok(Self::Direct), "permutohedral" => Ok(Self::Permutohedral),
             "permutohedral_noblur" => Ok(Self::PermutohedralNoBlur), "probreg" => Ok(Self::Probreg),
-            "fgt" => Ok(Self::Fgt),
+            "fgt" => Ok(Self::Fgt), "cuda" => Ok(Self::Cuda),
             _ => Err(invalid("unknown Gaussian backend; no automatic fallback")),
         }
     }
@@ -43,7 +43,7 @@ impl Backend {
         match self {
             Self::Direct => "direct", Self::Permutohedral => "permutohedral",
             Self::PermutohedralNoBlur => "permutohedral_noblur", Self::Probreg => "probreg",
-            Self::Fgt => "fgt",
+            Self::Fgt => "fgt", Self::Cuda => "cuda",
         }
     }
 }
@@ -221,7 +221,9 @@ impl AnalyticOptions {
             return Err(invalid("divergence_radius must be finite and greater than one"));
         }
         if self.backend != Backend::Direct && self.backend != Backend::Fgt {
-            return Err(invalid("analytic backend must be direct or fgt; lattice backends normalize the posterior in the other direction"));
+            // The Rust engine has no device path; "cuda" parses so the option surface
+            // matches, but selecting it here is an explicit error, never a CPU fallback.
+            return Err(invalid("analytic backend must be direct or fgt in the Rust engine; cuda is implemented in the C++ engine only, and lattice backends normalize the posterior in the other direction"));
         }
         Ok(())
     }

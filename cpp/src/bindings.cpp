@@ -1,4 +1,5 @@
 #include "acpd/analytic.hpp"
+#include "acpd/cuda.hpp"
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
@@ -91,6 +92,7 @@ namespace {
         o.analytic.divergence_radius=get<double>(p,"analytic_divergence_radius");
         o.analytic.backend=acpd::backend_from_string(get<std::string>(p,"analytic_backend"));
         o.fgt=fgt_options(p);
+        o.cuda.single_precision=get<bool>(p,"cuda_single_precision");
         o.validate();
         return o;
     }
@@ -161,8 +163,10 @@ NB_MODULE(_native,m) {
     m.def("gaussian_sum",[](Input s,Input q,Input v,double sigma2,const std::string& backend,nb::dict fgt) {
         auto sources=matrix(s), queries=matrix(q), values=matrix(v); acpd::Matrix out; auto b=acpd::backend_from_string(backend);
         const acpd::FgtOptions options=fgt_options(fgt);
+        acpd::CudaOptions device;
+        device.single_precision=get<bool>(fgt,"cuda_single_precision");
         {
-            nb::gil_scoped_release release; out=acpd::gaussian_sum(sources,queries,values,sigma2,b,options);
+            nb::gil_scoped_release release; out=acpd::gaussian_sum(sources,queries,values,sigma2,b,options,device);
         }
         return array(out);
     },"sources"_a.noconvert(),"queries"_a.noconvert(),"values"_a.noconvert(),"sigma2"_a,"backend"_a,"fgt"_a);
@@ -181,6 +185,12 @@ NB_MODULE(_native,m) {
         }
         nb::dict result;result["values"]=array(out);result["vertices"]=vertices;return result;
     },"features"_a.noconvert(),"values"_a.noconvert(),"with_blur"_a,"start"_a,"reverse"_a);
+    m.def("cuda_available",[]() {
+        return acpd::cuda_available();
+    });
+    m.def("cuda_device_name",[]() {
+        return acpd::cuda_device_name();
+    });
     m.def("basis",[](Input p,int degree) {
         auto points=matrix(p);
         acpd::Matrix out;

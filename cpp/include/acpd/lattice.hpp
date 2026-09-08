@@ -98,6 +98,6 @@ namespace acpd {
     };
     FilteredValues lattice_transform(const Matrix& sources, const Matrix& queries,
     const Matrix& values, double sigma2, Backend backend,
-    const FgtOptions& fgt = FgtOptions());
+    const FgtOptions& fgt = FgtOptions(), const CudaOptions& cuda = CudaOptions());
 }
 // namespace acpd

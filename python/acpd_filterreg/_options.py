@@ -49,6 +49,20 @@ class FgtOptions:
 
 
 @dataclass(frozen=True)
+class CudaOptions:
+    """GPU Gaussian-sum controls, read only when a stage selects the ``cuda`` backend.
+
+    The device operator is exact pair evaluation, not an approximation. It is
+    never selected implicitly, and a build or machine without CUDA raises rather
+    than computing on the CPU.
+    """
+    single_precision: bool = False
+
+    def __post_init__(self) -> None:
+        v.boolean("single_precision", self.single_precision)
+
+
+@dataclass(frozen=True)
 class AnalyticOptions:
     max_iterations: int = 220
     min_degree: int = 1
@@ -75,9 +89,9 @@ class AnalyticOptions:
         if v.real("rank_tolerance", self.rank_tolerance) >= 1:
             raise ValueError("rank_tolerance must be < 1")
         v.real("min_mass", self.min_mass)
-        if self.backend not in ("direct", "fgt"):
-            raise ValueError("analytic backend must be 'direct' or 'fgt'; the lattice backends "
-                             "normalize the posterior in the other direction")
+        if self.backend not in ("direct", "fgt", "cuda"):
+            raise ValueError("analytic backend must be 'direct', 'fgt' or 'cuda'; the lattice "
+                             "backends normalize the posterior in the other direction")
         if self.initialization not in ("auto", "cpd", "filterreg"):
             raise ValueError("initialization must be 'auto', 'cpd' or 'filterreg'")
         for name in ("stable_patience", "no_improve_patience", "min_iterations"):

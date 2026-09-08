@@ -125,7 +125,7 @@ class RegistrationResult:
             steps.append(AnalyticStep(degree, coefficient))
         scale = v.real("normalization_scale", raw["normalization_scale"])
         sigma2 = v.real("result sigma2", raw["sigma2"])
-        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt"):
+        if raw["method"] not in ("rigid", "analytic", "nonrigid") or raw["backend"] not in ("direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt", "cuda"):
             raise ValueError("unknown result method/backend")
         if raw["method"] == "rigid" and steps:
             raise ValueError("a rigid result cannot contain analytic steps")

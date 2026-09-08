@@ -304,6 +304,11 @@ fgt: &FgtOptions) -> RegResult<FilteredValues> {
             values:out,vertices:0,mode:"direct".into()
         });
     }
+    if backend == Backend::Cuda {
+        // No device path in the Rust engine. Raising keeps "cuda" from silently
+        // meaning "direct" here; use engine="cpp" for the GPU operator.
+        return Err(invalid("the cuda backend is implemented in the C++ engine only; the Rust engine does not fall back to a CPU path"));
+    }
     if backend == Backend::Fgt {
         let (values,cost) = crate::fgt::fgt_transform(s,q,v,sigma2,fgt)?;
         return Ok(FilteredValues {

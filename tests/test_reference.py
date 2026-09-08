@@ -4,6 +4,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 import acpd_filterreg as reg
+
+
+def _backends():
+    """Every CPU backend, plus cuda only where a device can actually run it.
+
+    Omitting cuda when no device is present is a hardware condition, not a silent
+    algorithmic fallback: test_cuda_backend_never_falls_back_to_cpu asserts that
+    selecting it without a device raises.
+    """
+    return tuple(b for b in reg.backend_names() if b != 'cuda' or reg.cuda_available())
 from acpd_filterreg import _api
 
 CASES = json.loads((Path(__file__).parent/'fixtures/upstream.json').read_text())['cases']
@@ -40,8 +50,10 @@ def test_upstream_taylor_basis(case, engine):
 
 
 @pytest.mark.parametrize('d', [2, 3])
-@pytest.mark.parametrize('backend', reg.backend_names())
+@pytest.mark.parametrize('backend', _backends())
 def test_filterreg_fused_moments(d, backend, engine):
+    if backend == 'cuda' and not reg.cuda_available(engine):
+        pytest.skip('the cuda backend needs a device and the C++ engine')
     rng = np.random.default_rng(5+d)
     x, y = rng.normal(size=(71,d)), rng.normal(size=(52,d))
     variance, w = .8, .15

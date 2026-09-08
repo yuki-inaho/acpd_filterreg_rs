@@ -21,7 +21,8 @@ namespace acpd {
         if(s=="permutohedral_noblur") return Backend::PermutohedralNoBlur;
         if(s=="probreg") return Backend::Probreg;
         if(s=="fgt") return Backend::Fgt;
-        throw std::invalid_argument("backend must be direct, permutohedral, permutohedral_noblur, probreg, or fgt; no fallback");
+        if(s=="cuda") return Backend::Cuda;
+        throw std::invalid_argument("backend must be direct, permutohedral, permutohedral_noblur, probreg, fgt, or cuda; no fallback");
     }
     std::string name(Backend b) {
         switch(b) {
@@ -30,6 +31,7 @@ namespace acpd {
             case Backend::PermutohedralNoBlur:return "permutohedral_noblur";
             case Backend::Probreg:return "probreg";
             case Backend::Fgt:return "fgt";
+            case Backend::Cuda:return "cuda";
         }
         throw std::invalid_argument("invalid backend enum");
     }
@@ -61,8 +63,8 @@ namespace acpd {
         if(rank_tolerance>=1) throw std::invalid_argument("rank_tolerance must be <1");
         positive(min_mass,"min_mass");
         if(initialization!="auto"&&initialization!="cpd"&&initialization!="filterreg") throw std::invalid_argument("invalid analytic initialization");
-        if(backend!=Backend::Direct&&backend!=Backend::Fgt)
-        throw std::invalid_argument("analytic backend must be direct or fgt; lattice backends normalize the posterior in the other direction");
+        if(backend!=Backend::Direct&&backend!=Backend::Fgt&&backend!=Backend::Cuda)
+        throw std::invalid_argument("analytic backend must be direct, fgt or cuda; lattice backends normalize the posterior in the other direction");
         if(stable_patience<1||no_improve_patience<1||min_iterations<1) throw std::invalid_argument("stopping counts must be positive");
         if(!std::isfinite(improvement_relative)||improvement_relative<0||!std::isfinite(rebound_relative)||rebound_relative<0)
         throw std::invalid_argument("relative stopping thresholds must be finite and nonnegative");
@@ -83,6 +85,7 @@ namespace acpd {
         rigid.validate();
         analytic.validate();
         fgt.validate();
+        cuda.validate();
         if(method==Method::Analytic&&analytic.initialization=="filterreg"&&analytic.sigma2<0)
         throw std::invalid_argument("standalone analytic mode has no FilterReg variance to inherit");
     }

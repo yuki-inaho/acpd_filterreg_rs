@@ -5,11 +5,11 @@ from importlib import import_module
 from typing import Any, Literal, Protocol
 import numpy as np
 from . import _validation as v
-from ._options import AnalyticOptions, FgtOptions, FilterRegOptions
+from ._options import AnalyticOptions, CudaOptions, FgtOptions, FilterRegOptions
 from ._result import RegistrationResult
 
 Engine = Literal["cpp", "rust"]
-Backend = Literal["direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt"]
+Backend = Literal["direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt", "cuda"]
 Method = Literal["rigid", "analytic", "nonrigid"]
 
 
@@ -35,11 +35,32 @@ def method_names() -> tuple[str, ...]:
 
 
 def backend_names() -> tuple[str, ...]:
-    return ("direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt")
+    return ("direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt", "cuda")
 
 
 def engine_names() -> tuple[str, ...]:
     return ("cpp", "rust")
+
+
+def cuda_available(engine: Engine = "cpp") -> bool:
+    """Whether the selected engine can run the GPU Gaussian-sum operator.
+
+    False means the backend raises rather than computing on the CPU. Only the
+    C++ engine has a device path; the Rust engine always reports False.
+    """
+    if engine not in engine_names():
+        raise ValueError(f"engine must be one of {engine_names()}")
+    if engine != "cpp":
+        return False
+    module = _get_engine(engine)
+    query = getattr(module, "cuda_available", None)
+    return bool(query()) if query is not None else False
+
+
+def cuda_device_name(engine: Engine = "cpp") -> str:
+    if not cuda_available(engine):
+        return ""
+    return str(_get_engine(engine).cuda_device_name())
 
 
 def _get_engine(engine: str) -> NativeEngine:
@@ -55,15 +76,21 @@ def _get_engine(engine: str) -> NativeEngine:
         ) from error
 
 
-def _fgt(fgt: FgtOptions | None) -> dict[str, Any]:
+def _fgt(fgt: FgtOptions | None, cuda: CudaOptions | None = None) -> dict[str, Any]:
     fgt = FgtOptions() if fgt is None else fgt
+    cuda = CudaOptions() if cuda is None else cuda
     if not isinstance(fgt, FgtOptions):
         raise TypeError("fgt must be FgtOptions")
-    return {f"fgt_{key}": value for key, value in asdict(fgt).items()}
+    if not isinstance(cuda, CudaOptions):
+        raise TypeError("cuda must be CudaOptions")
+    out = {f"fgt_{key}": value for key, value in asdict(fgt).items()}
+    out.update({f"cuda_{key}": value for key, value in asdict(cuda).items()})
+    return out
 
 
 def _options(method: str, backend: str, rigid: FilterRegOptions,
-             analytic: AnalyticOptions, fgt: FgtOptions | None = None) -> dict[str, Any]:
+             analytic: AnalyticOptions, fgt: FgtOptions | None = None,
+             cuda: CudaOptions | None = None) -> dict[str, Any]:
     out: dict[str, Any] = {"method": method, "backend": backend}
     for prefix, stage in (("rigid", rigid), ("analytic", analytic)):
         for key, value in asdict(stage).items():
@@ -74,14 +101,14 @@ def _options(method: str, backend: str, rigid: FilterRegOptions,
             elif isinstance(value, np.floating):
                 value = float(value)
             out[f"{prefix}_{key}"] = value
-    out.update(_fgt(fgt))
+    out.update(_fgt(fgt, cuda))
     return out
 
 
 def registration(fixed: Any, moving: Any, *, method: Method = "nonrigid", engine: Engine = "cpp",
                  backend: Backend = "permutohedral",
                  rigid: FilterRegOptions | None = None, analytic: AnalyticOptions | None = None,
-                 fgt: FgtOptions | None = None,
+                 fgt: FgtOptions | None = None, cuda: CudaOptions | None = None,
                  initial_rotation: Any = None, initial_translation: Any = None, target_normals: Any = None,
                  copy: bool = False) -> RegistrationResult:
     """Register moving -> fixed in 2D or 3D. The first argument is ALWAYS fixed.
@@ -108,6 +135,7 @@ def registration(fixed: Any, moving: Any, *, method: Method = "nonrigid", engine
     rigid = FilterRegOptions() if rigid is None else rigid
     analytic = AnalyticOptions() if analytic is None else analytic
     fgt = FgtOptions() if fgt is None else fgt
+    cuda = CudaOptions() if cuda is None else cuda
     if not isinstance(rigid, FilterRegOptions) or not isinstance(analytic, AnalyticOptions):
         raise TypeError("rigid/analytic must be FilterRegOptions/AnalyticOptions")
     if not isinstance(fgt, FgtOptions):
@@ -125,7 +153,7 @@ def registration(fixed: Any, moving: Any, *, method: Method = "nonrigid", engine
         raise ValueError("point-to-plane requires target_normals")
     if method == "analytic" and analytic.initialization == "filterreg" and analytic.sigma2 is None:
         raise ValueError("standalone analytic mode has no FilterReg variance to inherit")
-    raw = _get_engine(engine).registration(x, y, _options(method, backend, rigid, analytic, fgt), rotation, translation, normals)
+    raw = _get_engine(engine).registration(x, y, _options(method, backend, rigid, analytic, fgt, cuda), rotation, translation, normals)
     return RegistrationResult.from_native(raw, engine)
 
 
@@ -146,7 +174,8 @@ def registration_nonrigid(fixed: Any, moving: Any, **kwargs: Any) -> Registratio
 
 def gaussian_sum(sources: Any, queries: Any, values: Any, *, sigma2: float,
                  engine: Engine = "cpp", backend: Backend = "direct",
-                 fgt: FgtOptions | None = None, copy: bool = False) -> np.ndarray:
+                 fgt: FgtOptions | None = None, cuda: CudaOptions | None = None,
+                 copy: bool = False) -> np.ndarray:
     """Direct Gaussian sum, or its explicitly selected lattice/IFGT approximation.
 
     No row normalization: backend-specific lattice scaling/gain is preserved.
@@ -158,7 +187,7 @@ def gaussian_sum(sources: Any, queries: Any, values: Any, *, sigma2: float,
     value = v.array("values", values, 2, copy=copy)
     if s.shape[1] != q.shape[1] or len(value) != len(s):
         raise ValueError("inconsistent Gaussian transform dimensions")
-    return np.asarray(_get_engine(engine).gaussian_sum(s, q, value, variance, b, _fgt(fgt)))
+    return np.asarray(_get_engine(engine).gaussian_sum(s, q, value, variance, b, _fgt(fgt, cuda)))
 
 
 @dataclass(frozen=True)

@@ -67,6 +67,6 @@ def points(name: str, value: Any, *, copy: bool) -> np.ndarray:
 
 
 def backend(value: str) -> str:
-    if value not in ("direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt"):
+    if value not in ("direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt", "cuda"):
         raise ValueError("unknown Gaussian backend; no automatic fallback is provided")
     return value

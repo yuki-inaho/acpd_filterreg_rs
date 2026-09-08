@@ -58,7 +58,7 @@ namespace acpd {
                     indexed_sigma=sigma2;
                     ++stage.index_builds;
                 }
-                const Statistics stats=posterior_statistics(x,y,sigma2,o.rigid.w,true,o.backend,nv,cache.get(),o.fgt);
+                const Statistics stats=posterior_statistics(x,y,sigma2,o.rigid.w,true,o.backend,nv,cache.get(),o.fgt,o.cuda);
                 if(o.backend==Backend::Permutohedral||o.backend==Backend::Fgt) ++stage.index_builds;
                 if(o.backend==Backend::Probreg) stage.index_builds+=(stats.lattice_mode=="probreg_noblur"?2:1);
                 const RigidFit fit=fit_rigid(y,stats,o.rigid);
@@ -122,7 +122,7 @@ namespace acpd {
             };
             for(int it=0;it<opt.max_iterations&&cursor<schedule.size();++it,++cursor) {
                 try {
-                    const Statistics stats=posterior_statistics(x,y,sigma2,opt.w,false,opt.backend,Matrix(),nullptr,o.fgt);
+                    const Statistics stats=posterior_statistics(x,y,sigma2,opt.w,false,opt.backend,Matrix(),nullptr,o.fgt,o.cuda);
                     int active=0;
                     for(int i=0;i<stats.rho.size();++i) if(stats.rho[i]>opt.min_mass) ++active;
                     if(stats.mass<=opt.min_mass||active<static_cast<int>(exponents(d,opt.min_degree).size())) {

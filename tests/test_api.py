@@ -3,6 +3,16 @@ import gc
 import numpy as np
 import pytest
 import acpd_filterreg as reg
+
+
+def _backends():
+    """Every CPU backend, plus cuda only where a device can actually run it.
+
+    Omitting cuda when no device is present is a hardware condition, not a silent
+    algorithmic fallback: test_cuda_backend_never_falls_back_to_cpu asserts that
+    selecting it without a device raises.
+    """
+    return tuple(b for b in reg.backend_names() if b != 'cuda' or reg.cuda_available())
 from acpd_filterreg import _api
 
 
@@ -14,8 +24,10 @@ def pair(d):
 
 
 @pytest.mark.parametrize('d', [2,3])
-@pytest.mark.parametrize('backend', reg.backend_names())
+@pytest.mark.parametrize('backend', _backends())
 def test_frozen_pose_composition_and_storage(d, backend, engine, tmp_path):
+    if backend == 'cuda' and not reg.cuda_available(engine):
+        pytest.skip('the cuda backend needs a device and the C++ engine')
     x,y=pair(d)
     rigid=reg.FilterRegOptions(sigma2=.04,max_iterations=18)
     analytic=reg.AnalyticOptions(max_iterations=20,max_degree=3)
@@ -306,3 +318,46 @@ def test_fgt_is_in_the_backend_list_and_never_implicit():
     assert 'fgt' in reg.backend_names()
     assert reg.AnalyticOptions().backend == 'direct'
     assert reg.FgtOptions().order == 5
+
+
+def test_cuda_backend_never_falls_back_to_cpu(engine):
+    """Selecting the device operator without a device must raise, not compute on CPU."""
+    assert 'cuda' in reg.backend_names()
+    x, y = pair(3)
+    if reg.cuda_available(engine):
+        result = reg.registration_rigid(x, y, engine=engine, backend='cuda',
+                                        rigid=reg.FilterRegOptions(sigma2=.04, max_iterations=6))
+        assert all(item.lattice_mode == 'cuda' for item in result.rigid_stage.history)
+    else:
+        with pytest.raises(Exception):
+            reg.registration_rigid(x, y, engine=engine, backend='cuda',
+                                   rigid=reg.FilterRegOptions(sigma2=.04, max_iterations=2))
+
+
+def test_cuda_is_absent_from_the_rust_engine():
+    """The Rust engine has no device path and says so instead of silently using the CPU."""
+    assert reg.cuda_available('rust') is False
+    assert reg.cuda_device_name('rust') == ''
+
+
+@pytest.mark.parametrize('d', [2, 3])
+def test_cuda_matches_the_exact_cpu_sum(d):
+    """The device operator is exact pair evaluation, so it must agree to rounding."""
+    if not reg.cuda_available():
+        pytest.skip('no CUDA device on this machine')
+    rng = np.random.default_rng(29 + d)
+    x, y = rng.normal(size=(400, d)), rng.normal(size=(350, d)) + 0.1
+    values = np.column_stack([np.ones(len(x)), x, (x * x).sum(axis=1)])
+    exact = reg.gaussian_sum(x, y, values, sigma2=0.05, backend='direct')
+    device = reg.gaussian_sum(x, y, values, sigma2=0.05, backend='cuda')
+    scale = max(float(np.abs(exact).max()), 1e-300)
+    assert float(np.abs(device - exact).max()) / scale < 1e-13
+    # Single precision is a declared trade-off, not a silent one.
+    single = reg.gaussian_sum(x, y, values, sigma2=0.05, backend='cuda',
+                              cuda=reg.CudaOptions(single_precision=True))
+    assert float(np.abs(single - exact).max()) / scale < 1e-5
+
+
+def test_cuda_options_are_validated():
+    with pytest.raises((ValueError, TypeError)):
+        reg.CudaOptions(single_precision=1)

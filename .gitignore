@@ -7,6 +7,9 @@
 dist/
 outputs/
 temp/
+*.so
+*.pyd
+*.dylib
 *.aux
 *.log
 !validation/**/*.log

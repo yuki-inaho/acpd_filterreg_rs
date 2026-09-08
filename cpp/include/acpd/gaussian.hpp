@@ -19,9 +19,11 @@ namespace acpd {
     double w,bool filterreg,Backend backend=Backend::Direct,
     const Matrix& target_normals=Matrix(),
     const FixedNoBlurLattice* cache=nullptr,
-    const FgtOptions& fgt=FgtOptions());
+    const FgtOptions& fgt=FgtOptions(),
+    const CudaOptions& cuda=CudaOptions());
     Matrix gaussian_sum(const Matrix& sources,const Matrix& queries,const Matrix& values,
-    double sigma2,Backend backend=Backend::Direct,const FgtOptions& fgt=FgtOptions());
+    double sigma2,Backend backend=Backend::Direct,const FgtOptions& fgt=FgtOptions(),
+    const CudaOptions& cuda=CudaOptions());
     double variance_from_statistics(const Matrix& next,const Statistics& stats,double floor);
     double initial_variance(const Matrix& fixed,const Matrix& moving);
 }

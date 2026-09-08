@@ -2,6 +2,7 @@
 // Copyright (c) 2013 Philipp Kraehenbuehl. See THIRD_PARTY_NOTICES.md.
 #include "acpd/lattice.hpp"
 #include "acpd/fgt.hpp"
+#include "acpd/cuda.hpp"
 #include <cmath>
 #include <limits>
 #include <algorithm>
@@ -199,7 +200,7 @@ namespace acpd {
         return out;
     }
     FilteredValues lattice_transform(const Matrix& s,const Matrix& q,const Matrix& v,double sigma2,Backend backend,
-    const FgtOptions& fgt) {
+    const FgtOptions& fgt,const CudaOptions& cuda) {
         check_features(s);
         check_features(q);
         if(s.cols()!=q.cols() || s.rows()!=v.rows() || v.cols()<1 || !v.allFinite() || !std::isfinite(sigma2) || sigma2<=0)
@@ -211,6 +212,13 @@ namespace acpd {
             require_finite(out,"direct Gaussian transform");
             return {
                 out,0,"direct"
+            };
+        }
+        if(backend==Backend::Cuda) {
+            // Exact pair evaluation on the device: the same sum the direct branch
+            // computes, with no lattice or truncation involved.
+            return {
+                cuda_gaussian_transform(s,q,v,sigma2,cuda),0,"cuda"
             };
         }
         if(backend==Backend::Fgt) {

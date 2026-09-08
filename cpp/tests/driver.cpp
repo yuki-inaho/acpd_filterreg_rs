@@ -70,7 +70,7 @@ int main() {
                 >>b.rank_tolerance>>b.min_mass>>b.initialization>>b.stable_patience>>b.no_improve_patience
                 >>b.min_iterations>>b.improvement_relative>>b.rebound_relative>>b.divergence_radius;
             std::string analytic_backend;
-            std::cin>>analytic_backend>>o.fgt.order>>o.fgt.max_clusters>>o.fgt.cluster_radius>>o.fgt.cutoff_radius;
+            std::cin>>analytic_backend>>o.fgt.order>>o.fgt.max_clusters>>o.fgt.cluster_radius>>o.fgt.cutoff_radius>>o.cuda.single_precision;
             b.backend=backend_from_string(analytic_backend);
             Matrix x=read_matrix(n,d),y=read_matrix(m,d),r=read_matrix(d,d);
             Vector t=read_matrix(d,1);Matrix normals=read_matrix(nn,d);
@@ -85,10 +85,11 @@ int main() {
             std::cout<<",\"vertices\":"<<s.vertices<<",\"unsupported\":"<<s.unsupported<<",\"lattice_mode\":\""<<s.lattice_mode<<"\"}";
         } else if(op=="gaussian") {
             int d,n,m,k;double sigma2;std::string backend;FgtOptions fgt;
+            CudaOptions device;
             std::cin>>d>>n>>m>>k>>sigma2>>backend
-            >>fgt.order>>fgt.max_clusters>>fgt.cluster_radius>>fgt.cutoff_radius;
+            >>fgt.order>>fgt.max_clusters>>fgt.cluster_radius>>fgt.cutoff_radius>>device.single_precision;
             Matrix s=read_matrix(n,d),q=read_matrix(m,d),v=read_matrix(n,k);
-            mat(gaussian_sum(s,q,v,sigma2,backend_from_string(backend),fgt));
+            mat(gaussian_sum(s,q,v,sigma2,backend_from_string(backend),fgt,device));
         } else if(op=="lattice") {
             int d,n,k,start;bool blur,reverse;std::cin>>d>>n>>k>>blur>>start>>reverse;
             Matrix f=read_matrix(n,d),v=read_matrix(n,k);Permutohedral lattice(f,blur);

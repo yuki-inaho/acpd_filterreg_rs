@@ -4,8 +4,11 @@ option(ACPD_BUILD_PYTHON "Build the nanobind extension" ON)
 option(ACPD_INSTALL_CORE "Install the reusable C++ core and its headers" OFF)
 option(ACPD_BUILD_TESTS "Build native tests and the test driver" OFF)
 option(ACPD_BUILD_BENCH "Build the ablation/profiling benchmark binary" OFF)
+option(ACPD_ENABLE_CUDA "Build the CUDA Gaussian-sum E-step operator" OFF)
+set(ACPD_CUDA_ARCHITECTURES "61" CACHE STRING "CUDA architectures for the E-step kernel")
+set(ACPD_CUDA_HOST_COMPILER "" CACHE STRING "Host compiler for nvcc; needed when the C++ compiler is newer than the toolkit supports")
 option(ACPD_USE_SYSTEM_EIGEN "Use Eigen3 from the build environment" OFF)
-add_library(acpd_core STATIC src/types.cpp src/lattice.cpp src/fgt.cpp src/gaussian.cpp src/rigid.cpp src/analytic.cpp src/registration.cpp)
+add_library(acpd_core STATIC src/types.cpp src/lattice.cpp src/fgt.cpp src/cuda.cpp src/gaussian.cpp src/rigid.cpp src/analytic.cpp src/registration.cpp)
 target_compile_features(acpd_core PUBLIC cxx_std_17)
 target_include_directories(acpd_core PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 if(ACPD_USE_SYSTEM_EIGEN)
@@ -45,6 +48,36 @@ if(ACPD_BUILD_TESTS)
   add_test(NAME acpd_core_tests COMMAND acpd_core_tests)
   add_executable(acpd_test_driver tests/driver.cpp)
   target_link_libraries(acpd_test_driver PRIVATE acpd_core)
+endif()
+
+if(ACPD_ENABLE_CUDA)
+  # The kernel is a separate translation unit with a plain C ABI, so nvcc may use a
+  # different (older) host compiler than the rest of the core without ABI risk.
+  if(ACPD_CUDA_HOST_COMPILER)
+    set(CMAKE_CUDA_HOST_COMPILER "${ACPD_CUDA_HOST_COMPILER}")
+  endif()
+  enable_language(CUDA)
+  # nvcc reports its host compiler's library directories. The C++ objects are built
+  # and linked by the project's own compiler, so pulling in the host compiler's
+  # libstdc++ mixes two glibc versions. The .cu unit exposes a plain C ABI and needs
+  # only cudart, so those directories and the static CUDA runtime are dropped.
+  set(_acpd_cuda_link_dirs "")
+  foreach(_dir IN LISTS CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES)
+    if(NOT _dir MATCHES "/lib/gcc/")
+      list(APPEND _acpd_cuda_link_dirs "${_dir}")
+    endif()
+  endforeach()
+  set(CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES "${_acpd_cuda_link_dirs}")
+  set(CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES "")
+  add_library(acpd_cuda STATIC cuda/gaussian_transform.cu)
+  set_target_properties(acpd_cuda PROPERTIES CUDA_ARCHITECTURES "${ACPD_CUDA_ARCHITECTURES}"
+                                             POSITION_INDEPENDENT_CODE ON
+                                             CUDA_RUNTIME_LIBRARY Shared)
+  target_compile_options(acpd_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Wno-deprecated-gpu-targets>)
+  target_link_libraries(acpd_core PUBLIC acpd_cuda)
+  target_compile_definitions(acpd_core PUBLIC ACPD_ENABLE_CUDA)
+  find_package(CUDAToolkit REQUIRED)
+  target_link_libraries(acpd_cuda PUBLIC CUDA::cudart)
 endif()
 
 if(ACPD_BUILD_BENCH)

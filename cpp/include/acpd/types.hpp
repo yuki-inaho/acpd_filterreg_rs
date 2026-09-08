@@ -8,7 +8,7 @@ namespace acpd {
     using Vector = Eigen::VectorXd;
     /// All accelerated backends below are genuine permutohedral lattices.
     enum class Backend {
-        Direct, Permutohedral, PermutohedralNoBlur, Probreg, Fgt
+        Direct, Permutohedral, PermutohedralNoBlur, Probreg, Fgt, Cuda
     };
     enum class Method {
         Rigid, Analytic, Nonrigid
@@ -53,8 +53,9 @@ namespace acpd {
         double min_mass = 1e-12;
         Backend backend = Backend::Direct;
         // ACPD E-step. "direct" is the exact paper computation and the default;
-        // Fgt is an explicitly selected approximation. Lattice backends normalize
-        // the posterior in the other direction and are rejected here.
+        // "fgt" is an explicitly selected approximation and "cuda" the exact GPU
+        // operator. Lattice backends normalize the posterior in the other
+        // direction and are rejected here.
         std::string initialization = "auto";
         // "auto" resolves by method: nonrigid -> "filterreg", analytic -> "cpd".
         // Deterministic and declared, not a quality-triggered fallback.
@@ -86,6 +87,14 @@ namespace acpd {
         // in units of h; clusters farther than this from a query are skipped
         void validate() const;
     };
+    /// GPU Gaussian-sum controls. Read only when a stage selects the Cuda backend.
+    struct CudaOptions {
+        bool single_precision = false;
+        // Evaluate the exponential and products in float, accumulate in double.
+        // Pascal consumer parts run FP64 at 1/32 rate, so this is the difference
+        // between a compute-bound kernel and a crawl. Never selected implicitly.
+        void validate() const;
+    };
     struct Options {
         Method method = Method::Nonrigid;
         Backend backend = Backend::Permutohedral;
@@ -93,6 +102,7 @@ namespace acpd {
         FilterOptions rigid;
         AnalyticOptions analytic;
         FgtOptions fgt;
+        CudaOptions cuda;
         void validate() const;
     };
     struct Iteration {

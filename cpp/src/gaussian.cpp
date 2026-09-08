@@ -1,5 +1,6 @@
 #include "acpd/gaussian.hpp"
 #include "acpd/fgt.hpp"
+#include "acpd/cuda.hpp"
 #include <cmath>
 #include <limits>
 #include <algorithm>
@@ -7,8 +8,9 @@ namespace acpd {
     namespace {
         constexpr double pi=3.141592653589793238462643383279502884;
     }
-    Matrix gaussian_sum(const Matrix& s,const Matrix& q,const Matrix& v,double sigma2,Backend b,const FgtOptions& fgt) {
-        return lattice_transform(s,q,v,sigma2,b,fgt).values;
+    Matrix gaussian_sum(const Matrix& s,const Matrix& q,const Matrix& v,double sigma2,Backend b,const FgtOptions& fgt,
+    const CudaOptions& cuda) {
+        return lattice_transform(s,q,v,sigma2,b,fgt,cuda).values;
     }
     Matrix moment_values(const Matrix& x,const Matrix& normals) {
         validate_cloud(x,"fixed");
@@ -34,13 +36,13 @@ namespace acpd {
     }
     Statistics posterior_statistics(const Matrix& x,const Matrix& y,double sigma2,double w,
     bool inverse,Backend backend,const Matrix& normals,const FixedNoBlurLattice* cache,
-    const FgtOptions& fgt) {
+    const FgtOptions& fgt,const CudaOptions& cuda) {
         validate_pair(x,y);
         if(!std::isfinite(sigma2) || sigma2<=0 || !std::isfinite(w) || w<0 || w>=1)
         throw std::invalid_argument("sigma2 must be positive and w in [0,1)");
         if(normals.size()) validate_normals(normals,x);
-        if(!inverse && backend!=Backend::Direct && backend!=Backend::Fgt)
-        throw std::invalid_argument("Analytic-CPD accepts the exact direct posterior or the explicitly selected fgt approximation; lattice backends normalize in the other direction");
+        if(!inverse && backend!=Backend::Direct && backend!=Backend::Fgt && backend!=Backend::Cuda)
+        throw std::invalid_argument("Analytic-CPD accepts the exact direct posterior, the explicitly selected fgt approximation, or the exact cuda operator; lattice backends normalize in the other direction");
         const int m=static_cast<int>(y.rows()),n=static_cast<int>(x.rows()),d=static_cast<int>(x.cols());
         const int centers=inverse?n:m,queries=inverse?m:n;
         const double normalizer=0.5*d*(std::log(2*pi)+std::log(sigma2));
@@ -51,7 +53,7 @@ namespace acpd {
         out.px=Matrix::Zero(m,d);
         out.x2=Vector::Zero(m);
         if(normals.size()) out.normals=Matrix::Zero(m,d);
-        if(!inverse && backend==Backend::Fgt) {
+        if(!inverse && (backend==Backend::Fgt||backend==Backend::Cuda)) {
             // Two O(N+M) transforms replace the O(NM) streaming loop: first the per-fixed-
             // point support G_j = sum_i K_ij, then the moving-point moments weighted by
             // 1/(G_j + C). Same posterior as the direct branch, evaluated approximately.
@@ -60,7 +62,13 @@ namespace acpd {
             const double outlier=w==0?0.0:std::exp(logc);
             if(!std::isfinite(outlier))
             throw NumericalError("fgt posterior needs a representable outlier constant; use the direct backend");
-            const Matrix support=fgt_transform(y,x,Matrix::Ones(m,1),sigma2,fgt);
+            // One forward pass for the denominators, then one transpose pass for the
+            // moments: the operator decomposition of the GPU-oriented formulation.
+            const auto transform=[&](const Matrix& sources,const Matrix& queries,const Matrix& channels) {
+                return backend==Backend::Cuda?cuda_gaussian_transform(sources,queries,channels,sigma2,cuda)
+                :fgt_transform(sources,queries,channels,sigma2,fgt);
+            };
+            const Matrix support=transform(y,x,Matrix::Ones(m,1));
             Matrix weighted=moment_values(x);
             for(int j=0;j<n;++j) {
                 const double denominator=support(j,0)+outlier;
@@ -68,10 +76,9 @@ namespace acpd {
                 out.nll-=std::log(denominator)+logfactor;
                 weighted.row(j)/=denominator;
             }
-            FgtCost cost;
-            const Matrix moments=fgt_transform(x,y,weighted,sigma2,fgt,&cost);
-            out.vertices=cost.clusters;
-            out.lattice_mode="fgt";
+            const Matrix moments=transform(x,y,weighted);
+            out.vertices=0;
+            out.lattice_mode=backend==Backend::Cuda?"cuda":"fgt";
             for(int i=0;i<m;++i) {
                 out.rho[i]=std::max(0.0,moments(i,0));
                 out.px.row(i)=moments.row(i).segment(1,d);
@@ -83,7 +90,7 @@ namespace acpd {
             filtered= {
                 cache->slice(y/std::sqrt(sigma2)),static_cast<int>(cache->lattice_size()),"original_noblur"
             };
-            else filtered=lattice_transform(x,y,moment_values(x,normals),sigma2,backend,fgt);
+            else filtered=lattice_transform(x,y,moment_values(x,normals),sigma2,backend,fgt,cuda);
             out.vertices=filtered.vertices;
             out.lattice_mode=filtered.mode;
             const Matrix& moments=filtered.values;
