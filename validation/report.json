@@ -1,11 +1,11 @@
 {
-  "release": "0.2.1",
+  "release": "0.3.0",
   "overall": "PASS",
   "dod": "DoD.json",
   "rust_execution_waived": false,
   "cpp_native_assertions_passed": 100,
   "ctest_test_cases": 1,
-  "python_driver_tests_passed": 164,
+  "python_driver_tests_passed": 193,
   "upstream_component_cases": 84,
   "asan_ubsan_leak_assertions_passed": 100,
   "actual_nanobind_built": true,
@@ -14,26 +14,36 @@
   "clean_extraction_test": "PASS",
   "installed_cpp_consumer": "PASS, 2D and 3D",
   "accuracy_audit": {
-    "cases": 36,
-    "improved": 17,
-    "regressed": 6,
-    "unchanged_within_1e_8": 13,
+    "cases": 54,
+    "improved": 54,
+    "regressed": 0,
+    "unchanged_within_1e_8": 0,
     "exceptions": 0,
-    "correspondences_used_only_for_evaluation": true
+    "median_final_paired_rms": 1.0207249039028575e-07,
+    "max_final_paired_rms": 1.6255297823566891e-06,
+    "correspondences_used_only_for_evaluation": true,
+    "baseline_0_2_0": {
+      "cases": 36,
+      "improved": 17,
+      "regressed": 6,
+      "unchanged": 13,
+      "median_final_paired_rms": 0.040845
+    }
   },
   "pdf_pages": 24,
   "notes": [
-    "No test driver result counts as native Python-extension acceptance; 0.2.1 has the real extensions.",
+    "No test driver result counts as native Python-extension acceptance.",
     "Component agreement is not Gaussian approximation error or full-paper benchmark reproduction.",
     "Historical failed attempts are retained under validation/as_delivered_v0.2.0/.",
-    "Only Linux x86_64 was executed. macOS and Windows remain configuration only."
+    "Only Linux x86_64 was executed. macOS and Windows remain configuration only.",
+    "Wall-clock seconds are not used for any speed claim; instruction counts are."
   ],
   "rust_waiver_available_but_unused": true,
-  "cpp_engine_python_tests_passed": 164,
-  "rust_engine_python_tests_passed": 124,
+  "cpp_engine_python_tests_passed": 193,
+  "rust_engine_python_tests_passed": 153,
   "rust_core_cargo_tests_passed": 90,
   "native_boundary_cases_passed": 13,
-  "cross_engine_parity_cases_passed": 8,
+  "cross_engine_parity_cases_passed": 10,
   "pixi_environments_resolved": [
     "default",
     "cpp",
@@ -66,5 +76,39 @@
     "overfull_boxes": 0,
     "latex_errors": 0,
     "note": "Page count and box/error counts were re-checked; the per-page image inspection is the 0.2.0 record."
+  },
+  "backends": [
+    "direct",
+    "permutohedral",
+    "permutohedral_noblur",
+    "probreg",
+    "fgt"
+  ],
+  "analytic_estep_backends": [
+    "direct",
+    "fgt"
+  ],
+  "speed": {
+    "metric": "callgrind instruction counts, load independent",
+    "record": "validation/rerun_2026-09-08/SPEED.md",
+    "lattice_allocation_free": {
+      "blur": 1.98,
+      "noblur": 1.75
+    },
+    "mstep_cod_vs_bdcsvd": {
+      "degree6": 4.62,
+      "degree8": 5.47,
+      "degree10": 9.32
+    },
+    "analytic_stage_vs_0_2_1": {
+      "n200_d3": 3.2,
+      "n500_d3": 2.23,
+      "n1000_d3": 1.74,
+      "n200_d2": 1.58,
+      "n500_d2": 1.33,
+      "n1000_d2": 1.26
+    },
+    "fgt_verdict": "slower than direct at every measured size and dimension; kept as an explicit mode only",
+    "lowrank_mstep": "not adopted: the Taylor design matrix numerical rank equals K, it is not low rank"
   }
 }

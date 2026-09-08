@@ -1,5 +1,5 @@
 {
-  "release": "0.2.1",
+  "release": "0.3.0",
   "overall": "PASS",
   "all_mandatory_conditions_met": true,
   "work_order_sha256": "0a29a1e140b08fa12af5d409ee6ab71ff499ab556d8e77675fca28748ce8bee8",
@@ -152,5 +152,13 @@
     "nanobind": "2.12.0",
     "pyo3": "0.28.3",
     "logs": "validation/rerun_2026-09-08/"
+  },
+  "post_dod_work": {
+    "summary": "The frozen DoD stayed satisfied while theory-consistency defects were corrected and the code was accelerated.",
+    "record": [
+      "CHANGELOG.md",
+      "validation/rerun_2026-09-08/SPEED.md"
+    ],
+    "frozen_conditions_unchanged": true
   }
 }
