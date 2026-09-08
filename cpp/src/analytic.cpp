@@ -1,5 +1,6 @@
 #include "acpd/analytic.hpp"
 #include <Eigen/SVD>
+#include <Eigen/QR>
 #include <algorithm>
 #include <cmath>
 namespace acpd {
@@ -74,7 +75,11 @@ namespace acpd {
         // displacement cap, or damping. SVD avoids explicitly forming Phi^T W Phi.
         require_finite(design,"weighted Taylor design");
         require_finite(targets,"weighted targets");
-        Eigen::JacobiSVD<Matrix> solver(design,Eigen::ComputeThinU|Eigen::ComputeThinV);
+        // Divide-and-conquer SVD: same decomposition, same minimum-norm least-squares
+        // solution and the same relative rank threshold as the one-sided Jacobi variant,
+        // but without its sweep cost. It is still an unregularized SVD solve, so the
+        // paper's Eq.(20)/(22) estimate is unchanged.
+        Eigen::BDCSVD<Matrix> solver(design,Eigen::ComputeThinU|Eigen::ComputeThinV);
         solver.setThreshold(o.rank_tolerance);
         Matrix absolute=solver.solve(targets);
         Matrix next=phi*absolute;
