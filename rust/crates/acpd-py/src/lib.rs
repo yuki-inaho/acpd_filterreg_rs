@@ -62,6 +62,14 @@ fn integer(d:&Bound<'_,PyDict>,key:&str)->PyResult<usize> {
 fn boolean(d:&Bound<'_,PyDict>,key:&str)->PyResult<bool> {
     item(d,key)?.extract()
 }
+fn fgt_options(d:&Bound<'_,PyDict>)->PyResult<core::FgtOptions> {
+    Ok(core::FgtOptions {
+        order:integer(d,"fgt_order")?,
+        max_clusters:integer(d,"fgt_max_clusters")?,
+        cluster_radius:number(d,"fgt_cluster_radius")?,
+        cutoff_radius:number(d,"fgt_cutoff_radius")?,
+    })
+}
 fn options(d:&Bound<'_,PyDict>)->PyResult<core::Options> {
     let method:String=item(d,"method")?.extract()?;
     let backend:String=item(d,"backend")?.extract()?;
@@ -87,7 +95,9 @@ fn options(d:&Bound<'_,PyDict>)->PyResult<core::Options> {
             improvement_relative:number(d,"analytic_improvement_relative")?,
             rebound_relative:number(d,"analytic_rebound_relative")?,
             divergence_radius:number(d,"analytic_divergence_radius")?,
+            backend:core::Backend::parse(item(d,"analytic_backend")?.extract::<String>()?.as_str()).map_err(error)?,
         },
+        fgt:fgt_options(d)?,
     };
     out.validate().map_err(error)?;
     Ok(out)
@@ -165,12 +175,13 @@ config:Bound<'py,PyDict>,rotation:PyReadonlyArray2<'py,f64>,translation:PyReadon
 }
 #[pyfunction]
 fn gaussian_sum<'py>(py:Python<'py>,sources:PyReadonlyArray2<'py,f64>,queries:PyReadonlyArray2<'py,f64>,values:PyReadonlyArray2<'py,f64>,
-sigma2:f64,backend:&str)->PyResult<Bound<'py,PyArray2<f64>>> {
+sigma2:f64,backend:&str,fgt:&Bound<'py,PyDict>)->PyResult<Bound<'py,PyArray2<f64>>> {
     let s=matrix(&sources)?;
     let q=matrix(&queries)?;
     let v=matrix(&values)?;
     let b=core::Backend::parse(backend).map_err(error)?;
-    let out=py.detach(move||core::gaussian_sum(&s,&q,&v,sigma2,b)).map_err(error)?;
+    let fgt=fgt_options(fgt)?;
+    let out=py.detach(move||core::gaussian_sum(&s,&q,&v,sigma2,b,&fgt)).map_err(error)?;
     array(py,&out)
 }
 #[pyfunction]
@@ -179,7 +190,8 @@ filterreg:bool,backend:&str)->PyResult<Bound<'py,PyDict>> {
     let x=matrix(&fixed)?;
     let y=matrix(&moving)?;
     let b=core::Backend::parse(backend).map_err(error)?;
-    let s=py.detach(move||core::posterior_statistics(&x,&y,sigma2,w,filterreg,b,None,None)).map_err(error)?;
+    let fgt=core::FgtOptions::default();
+    let s=py.detach(move||core::posterior_statistics(&x,&y,sigma2,w,filterreg,b,None,None,&fgt)).map_err(error)?;
     let out=PyDict::new(py);
     out.set_item("rho",array1(py,&s.rho))?;
     out.set_item("px",array(py,&s.px)?)?;

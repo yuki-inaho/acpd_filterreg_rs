@@ -18,9 +18,10 @@ namespace acpd {
     Statistics posterior_statistics(const Matrix& fixed,const Matrix& current,double sigma2,
     double w,bool filterreg,Backend backend=Backend::Direct,
     const Matrix& target_normals=Matrix(),
-    const FixedNoBlurLattice* cache=nullptr);
+    const FixedNoBlurLattice* cache=nullptr,
+    const FgtOptions& fgt=FgtOptions());
     Matrix gaussian_sum(const Matrix& sources,const Matrix& queries,const Matrix& values,
-    double sigma2,Backend backend=Backend::Direct);
+    double sigma2,Backend backend=Backend::Direct,const FgtOptions& fgt=FgtOptions());
     double variance_from_statistics(const Matrix& next,const Statistics& stats,double floor);
     double initial_variance(const Matrix& fixed,const Matrix& moving);
 }

@@ -76,8 +76,8 @@ target_normals: Option<&Matrix>,
                 indexed_sigma = sigma2;
                 rigid_stage.index_builds += 1;
             }
-            let stats = posterior_statistics(&x,&y,sigma2,opt.w,true,options.backend,normals,cache.as_ref())?;
-            if options.backend == Backend::Permutohedral {
+            let stats = posterior_statistics(&x,&y,sigma2,opt.w,true,options.backend,normals,cache.as_ref(),&options.fgt)?;
+            if options.backend == Backend::Permutohedral || options.backend == Backend::Fgt {
                 rigid_stage.index_builds += 1;
             }
             if options.backend == Backend::Probreg {
@@ -171,7 +171,7 @@ target_normals: Option<&Matrix>,
         while it < opt.max_iterations && cursor < schedule.len() {
             let raw_degree = schedule[cursor];
             let attempt = (|| -> RegResult<Option<(Statistics,Fit,f64)>> {
-                let stats = posterior_statistics(&x,&y,sigma2,opt.w,false,Backend::Direct,None,None)?;
+                let stats = posterior_statistics(&x,&y,sigma2,opt.w,false,opt.backend,None,None,&options.fgt)?;
                 let active = stats.rho.iter().filter(|&&v| v>opt.min_mass).count();
                 if stats.mass <= opt.min_mass || active < exponents(d,opt.min_degree)?.len() {
                     return Ok(None);
@@ -228,7 +228,7 @@ target_normals: Option<&Matrix>,
             analytic_stage.history.push(Iteration {
                 iteration:it+1,raw_degree,degree,active:fit.active,rank:fit.rank,
                 sigma2,nll_before:stats.nll,step_rms:motion,fit_rms:fit.fit_rms,
-                lattice_vertices:0,lattice_mode:"direct".into(),
+                lattice_vertices:stats.vertices,lattice_mode:stats.lattice_mode.clone(),
             });
             // Actual minimum is retained; significant improvement controls only patience.
             if score < best_score {

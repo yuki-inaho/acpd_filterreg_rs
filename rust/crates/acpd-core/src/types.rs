@@ -28,13 +28,14 @@ pub(crate) fn numerical(s: &str) -> Error {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Backend {
-    Direct, Permutohedral, PermutohedralNoBlur, Probreg
+    Direct, Permutohedral, PermutohedralNoBlur, Probreg, Fgt
 }
 impl Backend {
     pub fn parse(s: &str) -> RegResult<Self> {
         match s {
             "direct" => Ok(Self::Direct), "permutohedral" => Ok(Self::Permutohedral),
             "permutohedral_noblur" => Ok(Self::PermutohedralNoBlur), "probreg" => Ok(Self::Probreg),
+            "fgt" => Ok(Self::Fgt),
             _ => Err(invalid("unknown Gaussian backend; no automatic fallback")),
         }
     }
@@ -42,6 +43,7 @@ impl Backend {
         match self {
             Self::Direct => "direct", Self::Permutohedral => "permutohedral",
             Self::PermutohedralNoBlur => "permutohedral_noblur", Self::Probreg => "probreg",
+            Self::Fgt => "fgt",
         }
     }
 }
@@ -88,6 +90,10 @@ pub struct AnalyticOptions {
     pub initialization: String, pub stable_patience: usize,
     pub no_improve_patience: usize, pub min_iterations: usize,
     pub improvement_relative: f64, pub rebound_relative: f64,
+    /// ACPD E-step. `Direct` is the exact paper computation and the default; `Fgt` is an
+    /// explicitly selected approximation. Lattice backends normalize the posterior in the
+    /// other direction and are rejected here.
+    pub backend: Backend,
     /// Multiple of the fixed cloud's radius beyond which an iterate is refused. A
     /// stopping rule only: accepted fits are the paper's unregularized solution,
     /// never clipped, damped or penalised. Healthy runs stay within 1.9x.
@@ -100,20 +106,55 @@ impl Default for AnalyticOptions {
             tolerance: 1e-7, w: 0.1, sigma2: -1.0, min_sigma2: 1e-12,
             rank_tolerance: 1e-12, min_mass: 1e-12, initialization: "auto".into(),
             stable_patience: 5, no_improve_patience: 8, min_iterations: 6,
-            improvement_relative: 1e-6, rebound_relative: 1e-3, divergence_radius: 100.0
+            improvement_relative: 1e-6, rebound_relative: 1e-3, backend: Backend::Direct,
+            divergence_radius: 100.0
         }
     }
 }
 #[derive(Debug, Clone)]
 pub struct Options {
     pub method: Method, pub backend: Backend,
-    pub rigid: FilterOptions, pub analytic: AnalyticOptions
+    pub rigid: FilterOptions, pub analytic: AnalyticOptions, pub fgt: FgtOptions
+}
+/// Improved Fast Gauss Transform controls. Shared by both stages when the corresponding
+/// backend selects `Fgt`; never used unless it is selected.
+#[derive(Debug, Clone)]
+pub struct FgtOptions {
+    /// truncation degree of the Taylor expansion about a cluster centre
+    pub order: usize,
+    /// hard cap on centres; the count is chosen adaptively below it
+    pub max_clusters: usize,
+    /// target cluster radius in units of h = sqrt(2 sigma^2)
+    pub cluster_radius: f64,
+    /// in units of h; clusters farther than this from a query are skipped
+    pub cutoff_radius: f64,
+}
+impl Default for FgtOptions {
+    fn default() -> Self {
+        Self {
+            order: 5, max_clusters: 4096, cluster_radius: 0.25, cutoff_radius: 4.0
+        }
+    }
+}
+impl FgtOptions {
+    pub fn validate(&self) -> RegResult<()> {
+        if self.order > 12 {
+            return Err(invalid("fgt order must be in [0,12]"));
+        }
+        if self.max_clusters == 0 || self.max_clusters > 1000000 {
+            return Err(invalid("fgt max_clusters must be in [1,1000000]"));
+        }
+        positive(self.cluster_radius,"fgt cluster_radius")?;
+        positive(self.cutoff_radius,"fgt cutoff_radius")?;
+        Ok(())
+    }
 }
 impl Default for Options {
     fn default() -> Self {
         Self {
             method: Method::Nonrigid, backend: Backend::Permutohedral,
-            rigid: FilterOptions::default(), analytic: AnalyticOptions::default()
+            rigid: FilterOptions::default(), analytic: AnalyticOptions::default(),
+            fgt: FgtOptions::default()
         }
     }
 }
@@ -179,6 +220,9 @@ impl AnalyticOptions {
         if !self.divergence_radius.is_finite() || self.divergence_radius <= 1.0 {
             return Err(invalid("divergence_radius must be finite and greater than one"));
         }
+        if self.backend != Backend::Direct && self.backend != Backend::Fgt {
+            return Err(invalid("analytic backend must be direct or fgt; lattice backends normalize the posterior in the other direction"));
+        }
         Ok(())
     }
 }
@@ -186,6 +230,7 @@ impl Options {
     pub fn validate(&self) -> RegResult<()> {
         self.rigid.validate()?;
         self.analytic.validate()?;
+        self.fgt.validate()?;
         if self.method == Method::Analytic && self.analytic.initialization == "filterreg" && self.analytic.sigma2 < 0.0 {
             return Err(invalid("standalone analytic mode has no FilterReg variance to inherit"));
         }

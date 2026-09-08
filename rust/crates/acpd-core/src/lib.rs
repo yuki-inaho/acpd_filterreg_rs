@@ -3,6 +3,7 @@
 //! Rust; neither C++ calls nor a Python numerical fallback are used.
 #![forbid(unsafe_code)]
 pub mod analytic;
+pub mod fgt;
 pub mod gaussian;
 pub mod lattice;
 pub mod registration;
@@ -13,6 +14,9 @@ pub use analytic::{
 };
 pub use gaussian::{
     gaussian_sum, posterior_statistics, Statistics
+};
+pub use fgt::{
+    fgt_transform, FgtCost
 };
 pub use lattice::{
     Permutohedral, FixedNoBlurLattice

@@ -51,6 +51,15 @@ namespace {
         if(!d.contains(key)) throw std::invalid_argument(std::string("missing native option: ")+key);
         return nb::cast<T>(d[key]);
     }
+    acpd::FgtOptions fgt_options(nb::dict p) {
+        acpd::FgtOptions out;
+        out.order=get<int>(p,"fgt_order");
+        out.max_clusters=get<int>(p,"fgt_max_clusters");
+        out.cluster_radius=get<double>(p,"fgt_cluster_radius");
+        out.cutoff_radius=get<double>(p,"fgt_cutoff_radius");
+        out.validate();
+        return out;
+    }
     acpd::Options options(const nb::dict& p) {
         acpd::Options o;
         o.method=acpd::method_from_string(get<std::string>(p,"method"));
@@ -80,6 +89,8 @@ namespace {
         o.analytic.improvement_relative=get<double>(p,"analytic_improvement_relative");
         o.analytic.rebound_relative=get<double>(p,"analytic_rebound_relative");
         o.analytic.divergence_radius=get<double>(p,"analytic_divergence_radius");
+        o.analytic.backend=acpd::backend_from_string(get<std::string>(p,"analytic_backend"));
+        o.fgt=fgt_options(p);
         o.validate();
         return o;
     }
@@ -147,13 +158,14 @@ NB_MODULE(_native,m) {
         }
         return result(out);
     },"fixed"_a.noconvert(),"moving"_a.noconvert(),"options"_a,"rotation"_a.noconvert(),"translation"_a.noconvert(),"target_normals"_a.noconvert());
-    m.def("gaussian_sum",[](Input s,Input q,Input v,double sigma2,const std::string& backend) {
+    m.def("gaussian_sum",[](Input s,Input q,Input v,double sigma2,const std::string& backend,nb::dict fgt) {
         auto sources=matrix(s), queries=matrix(q), values=matrix(v); acpd::Matrix out; auto b=acpd::backend_from_string(backend);
+        const acpd::FgtOptions options=fgt_options(fgt);
         {
-            nb::gil_scoped_release release; out=acpd::gaussian_sum(sources,queries,values,sigma2,b);
+            nb::gil_scoped_release release; out=acpd::gaussian_sum(sources,queries,values,sigma2,b,options);
         }
         return array(out);
-    },"sources"_a.noconvert(),"queries"_a.noconvert(),"values"_a.noconvert(),"sigma2"_a,"backend"_a);
+    },"sources"_a.noconvert(),"queries"_a.noconvert(),"values"_a.noconvert(),"sigma2"_a,"backend"_a,"fgt"_a);
     m.def("posterior_stats",[](Input x,Input y,double sigma2,double w,bool inverse,const std::string& backend) {
         auto fixed=matrix(x), moving=matrix(y); acpd::Statistics s; auto b=acpd::backend_from_string(backend);
         {

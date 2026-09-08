@@ -8,7 +8,7 @@ namespace acpd {
     using Vector = Eigen::VectorXd;
     /// All accelerated backends below are genuine permutohedral lattices.
     enum class Backend {
-        Direct, Permutohedral, PermutohedralNoBlur, Probreg
+        Direct, Permutohedral, PermutohedralNoBlur, Probreg, Fgt
     };
     enum class Method {
         Rigid, Analytic, Nonrigid
@@ -51,6 +51,10 @@ namespace acpd {
         double min_sigma2 = 1e-12;
         double rank_tolerance = 1e-12;
         double min_mass = 1e-12;
+        Backend backend = Backend::Direct;
+        // ACPD E-step. "direct" is the exact paper computation and the default;
+        // Fgt is an explicitly selected approximation. Lattice backends normalize
+        // the posterior in the other direction and are rejected here.
         std::string initialization = "auto";
         // "auto" resolves by method: nonrigid -> "filterreg", analytic -> "cpd".
         // Deterministic and declared, not a quality-triggered fallback.
@@ -67,12 +71,28 @@ namespace acpd {
         // never clipped, damped or penalised. Healthy runs stay within 1.9x.
         void validate() const;
     };
+    /// Improved Fast Gauss Transform controls. Shared by both stages when the
+    /// corresponding backend selects Fgt; never used unless it is selected.
+    struct FgtOptions {
+        int order = 5;
+        // truncation degree of the Taylor expansion about a cluster centre
+        int max_clusters = 4096;
+        // hard cap on centres; the count is chosen adaptively below it
+        double cluster_radius = 0.25;
+        // target cluster radius in units of h = sqrt(2 sigma^2); centres are added
+        // until every source is within it, so accuracy does not collapse as sigma
+        // shrinks. Hitting max_clusters first is reported, not silently accepted.
+        double cutoff_radius = 4.0;
+        // in units of h; clusters farther than this from a query are skipped
+        void validate() const;
+    };
     struct Options {
         Method method = Method::Nonrigid;
         Backend backend = Backend::Permutohedral;
         // FilterReg ONLY; ACPD always exact/direct
         FilterOptions rigid;
         AnalyticOptions analytic;
+        FgtOptions fgt;
         void validate() const;
     };
     struct Iteration {

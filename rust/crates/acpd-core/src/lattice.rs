@@ -280,7 +280,8 @@ impl FixedNoBlurLattice {
 pub struct FilteredValues {
     pub values: Matrix, pub vertices: usize, pub mode: String
 }
-pub fn lattice_transform(s: &Matrix, q: &Matrix, v: &Matrix, sigma2: f64, backend: Backend) -> RegResult<FilteredValues> {
+pub fn lattice_transform(s: &Matrix, q: &Matrix, v: &Matrix, sigma2: f64, backend: Backend,
+fgt: &FgtOptions) -> RegResult<FilteredValues> {
     check_features(s)?;
     check_features(q)?;
     positive(sigma2,"sigma2")?;
@@ -301,6 +302,12 @@ pub fn lattice_transform(s: &Matrix, q: &Matrix, v: &Matrix, sigma2: f64, backen
         finite(&out,"direct Gaussian transform")?;
         return Ok(FilteredValues {
             values:out,vertices:0,mode:"direct".into()
+        });
+    }
+    if backend == Backend::Fgt {
+        let (values,cost) = crate::fgt::fgt_transform(s,q,v,sigma2,fgt)?;
+        return Ok(FilteredValues {
+            values,vertices:cost.clusters,mode:"fgt".into()
         });
     }
     let sigma = sigma2.sqrt();

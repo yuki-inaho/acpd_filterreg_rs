@@ -58,8 +58,8 @@ namespace acpd {
                     indexed_sigma=sigma2;
                     ++stage.index_builds;
                 }
-                const Statistics stats=posterior_statistics(x,y,sigma2,o.rigid.w,true,o.backend,nv,cache.get());
-                if(o.backend==Backend::Permutohedral) ++stage.index_builds;
+                const Statistics stats=posterior_statistics(x,y,sigma2,o.rigid.w,true,o.backend,nv,cache.get(),o.fgt);
+                if(o.backend==Backend::Permutohedral||o.backend==Backend::Fgt) ++stage.index_builds;
                 if(o.backend==Backend::Probreg) stage.index_builds+=(stats.lattice_mode=="probreg_noblur"?2:1);
                 const RigidFit fit=fit_rigid(y,stats,o.rigid);
                 // Use UPDATED coordinates and ambient dimension d. The attached
@@ -122,7 +122,7 @@ namespace acpd {
             };
             for(int it=0;it<opt.max_iterations&&cursor<schedule.size();++it,++cursor) {
                 try {
-                    const Statistics stats=posterior_statistics(x,y,sigma2,opt.w,false,Backend::Direct);
+                    const Statistics stats=posterior_statistics(x,y,sigma2,opt.w,false,opt.backend,Matrix(),nullptr,o.fgt);
                     int active=0;
                     for(int i=0;i<stats.rho.size();++i) if(stats.rho[i]>opt.min_mass) ++active;
                     if(stats.mass<=opt.min_mass||active<static_cast<int>(exponents(d,opt.min_degree).size())) {
@@ -155,7 +155,8 @@ namespace acpd {
                     y=fit.next;
                     sigma2=next_sigma;
                     stage.history.push_back({
-                        it+1,schedule[cursor],fit.step.degree,fit.active,fit.rank,sigma2,stats.nll,motion,fit.fit_rms,0,"direct"
+                        it+1,schedule[cursor],fit.step.degree,fit.active,fit.rank,sigma2,stats.nll,motion,fit.fit_rms,
+                            stats.vertices,stats.lattice_mode
                     });
                     // Fig.1: save the actual best state. Patience uses the source's
                     // significant-improvement threshold, but never loses a lower score.

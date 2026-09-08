@@ -20,7 +20,8 @@ namespace acpd {
         if(s=="permutohedral") return Backend::Permutohedral;
         if(s=="permutohedral_noblur") return Backend::PermutohedralNoBlur;
         if(s=="probreg") return Backend::Probreg;
-        throw std::invalid_argument("backend must be direct, permutohedral, permutohedral_noblur, or probreg; no fallback");
+        if(s=="fgt") return Backend::Fgt;
+        throw std::invalid_argument("backend must be direct, permutohedral, permutohedral_noblur, probreg, or fgt; no fallback");
     }
     std::string name(Backend b) {
         switch(b) {
@@ -28,6 +29,7 @@ namespace acpd {
             case Backend::Permutohedral:return "permutohedral";
             case Backend::PermutohedralNoBlur:return "permutohedral_noblur";
             case Backend::Probreg:return "probreg";
+            case Backend::Fgt:return "fgt";
         }
         throw std::invalid_argument("invalid backend enum");
     }
@@ -59,17 +61,28 @@ namespace acpd {
         if(rank_tolerance>=1) throw std::invalid_argument("rank_tolerance must be <1");
         positive(min_mass,"min_mass");
         if(initialization!="auto"&&initialization!="cpd"&&initialization!="filterreg") throw std::invalid_argument("invalid analytic initialization");
+        if(backend!=Backend::Direct&&backend!=Backend::Fgt)
+        throw std::invalid_argument("analytic backend must be direct or fgt; lattice backends normalize the posterior in the other direction");
         if(stable_patience<1||no_improve_patience<1||min_iterations<1) throw std::invalid_argument("stopping counts must be positive");
         if(!std::isfinite(improvement_relative)||improvement_relative<0||!std::isfinite(rebound_relative)||rebound_relative<0)
         throw std::invalid_argument("relative stopping thresholds must be finite and nonnegative");
         if(!std::isfinite(divergence_radius)||divergence_radius<=1)
         throw std::invalid_argument("divergence_radius must be finite and greater than one");
     }
+    void FgtOptions::validate() const {
+        if(order<0||order>12) throw std::invalid_argument("fgt order must be in [0,12]");
+        if(max_clusters<1||max_clusters>1000000) throw std::invalid_argument("fgt max_clusters must be in [1,1000000]");
+        if(!std::isfinite(cluster_radius)||cluster_radius<=0)
+        throw std::invalid_argument("fgt cluster_radius must be finite and positive");
+        if(!std::isfinite(cutoff_radius)||cutoff_radius<=0)
+        throw std::invalid_argument("fgt cutoff_radius must be finite and positive");
+    }
     void Options::validate() const {
         name(method);
         name(backend);
         rigid.validate();
         analytic.validate();
+        fgt.validate();
         if(method==Method::Analytic&&analytic.initialization=="filterreg"&&analytic.sigma2<0)
         throw std::invalid_argument("standalone analytic mode has no FilterReg variance to inherit");
     }

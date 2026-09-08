@@ -1,6 +1,7 @@
 // Algorithmic port of the BSD-3-Clause permutohedral code shipped in probreg.
 // Copyright (c) 2013 Philipp Kraehenbuehl. See THIRD_PARTY_NOTICES.md.
 #include "acpd/lattice.hpp"
+#include "acpd/fgt.hpp"
 #include <cmath>
 #include <limits>
 #include <algorithm>
@@ -197,7 +198,8 @@ namespace acpd {
         require_finite(out,"no-blur slicing");
         return out;
     }
-    FilteredValues lattice_transform(const Matrix& s,const Matrix& q,const Matrix& v,double sigma2,Backend backend) {
+    FilteredValues lattice_transform(const Matrix& s,const Matrix& q,const Matrix& v,double sigma2,Backend backend,
+    const FgtOptions& fgt) {
         check_features(s);
         check_features(q);
         if(s.cols()!=q.cols() || s.rows()!=v.rows() || v.cols()<1 || !v.allFinite() || !std::isfinite(sigma2) || sigma2<=0)
@@ -209,6 +211,13 @@ namespace acpd {
             require_finite(out,"direct Gaussian transform");
             return {
                 out,0,"direct"
+            };
+        }
+        if(backend==Backend::Fgt) {
+            FgtCost cost;
+            Matrix out=fgt_transform(s,q,v,sigma2,fgt,&cost);
+            return {
+                out,cost.clusters,"fgt"
             };
         }
         const double sigma=std::sqrt(sigma2);

@@ -1,22 +1,23 @@
-++ pixi run -e cpp cmake -S cpp -B /tmp/claude-1000/-home-inaho-omen-Project-cpd3d-rs/82e69e4c-2667-4e2e-9a7f-5fa4bdb5e178/scratchpad/work/build-sanitize -G Ninja -DACPD_BUILD_PYTHON=OFF -DACPD_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo '-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all' -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined
 -- The CXX compiler identification is GNU 15.3.0
 -- Detecting CXX compiler ABI info
 -- Detecting CXX compiler ABI info - done
 -- Check for working CXX compiler: /home/inaho-omen/Project/acpd_filterreg_rs/.pixi/envs/cpp/bin/c++ - skipped
 -- Detecting CXX compile features
 -- Detecting CXX compile features - done
--- Configuring done (0.8s)
+-- Configuring done (0.9s)
 -- Generating done (0.0s)
 -- Build files have been written to: /tmp/claude-1000/-home-inaho-omen-Project-cpd3d-rs/82e69e4c-2667-4e2e-9a7f-5fa4bdb5e178/scratchpad/work/build-sanitize
-++ pixi run -e cpp cmake --build /tmp/claude-1000/-home-inaho-omen-Project-cpd3d-rs/82e69e4c-2667-4e2e-9a7f-5fa4bdb5e178/scratchpad/work/build-sanitize --parallel 4
-[1/11] Building CXX object CMakeFiles/acpd_core.dir/src/gaussian.cpp.o
-[2/11] Building CXX object CMakeFiles/acpd_core.dir/src/lattice.cpp.o
-[3/11] Building CXX object CMakeFiles/acpd_core.dir/src/types.cpp.o
-[4/11] Building CXX object CMakeFiles/acpd_core.dir/src/registration.cpp.o
-[5/11] Building CXX object CMakeFiles/acpd_test_driver.dir/tests/driver.cpp.o
-[6/11] Building CXX object CMakeFiles/acpd_core_tests.dir/tests/core_tests.cpp.o
-[7/11] Building CXX object CMakeFiles/acpd_core.dir/src/analytic.cpp.o
-[8/11] Building CXX object CMakeFiles/acpd_core.dir/src/rigid.cpp.o
-[9/11] Linking CXX static library libacpd_core.a
-[10/11] Linking CXX executable acpd_core_tests
-[11/11] Linking CXX executable acpd_test_driver
+[1/14] Building CXX object CMakeFiles/acpd_core.dir/src/fgt.cpp.o
+[2/14] Building CXX object CMakeFiles/acpd_core.dir/src/gaussian.cpp.o
+[3/14] Building CXX object CMakeFiles/acpd_core.dir/src/lattice.cpp.o
+[4/14] Building CXX object CMakeFiles/acpd_core.dir/src/types.cpp.o
+[5/14] Building CXX object CMakeFiles/acpd_core.dir/src/registration.cpp.o
+[6/14] Building CXX object CMakeFiles/acpd_test_driver.dir/tests/driver.cpp.o
+[7/14] Building CXX object CMakeFiles/acpd_core_tests.dir/tests/core_tests.cpp.o
+[8/14] Building CXX object CMakeFiles/acpd_bench.dir/bench/bench.cpp.o
+[9/14] Building CXX object CMakeFiles/acpd_core.dir/src/analytic.cpp.o
+[10/14] Building CXX object CMakeFiles/acpd_core.dir/src/rigid.cpp.o
+[11/14] Linking CXX static library libacpd_core.a
+[12/14] Linking CXX executable acpd_bench
+[13/14] Linking CXX executable acpd_test_driver
+[14/14] Linking CXX executable acpd_core_tests

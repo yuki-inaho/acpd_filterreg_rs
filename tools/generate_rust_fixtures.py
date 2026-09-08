@@ -34,7 +34,7 @@ fn upstream_lattice_{i:02}() -> RegResult<()> {{
         out.append(f'''#[test]
 fn upstream_posterior_{i:02}() -> RegResult<()> {{
     let x={mat(c['x'])};let y={mat(c['y'])};
-    let s=posterior_statistics(&x,&y,{scalar(c['sigma2'])},{scalar(c['w'])},false,Backend::Direct,None,None)?;
+    let s=posterior_statistics(&x,&y,{scalar(c['sigma2'])},{scalar(c['w'])},false,Backend::Direct,None,None,&FgtOptions::default())?;
     close(&s.px,&{mat(e['px'])},2e-13,2e-13);
     assert!((&s.rho-&{vec(e['rho'])}).amax()<2e-12);
     assert!((&s.x2-&{vec(e['x2'])}).amax()<2e-12);

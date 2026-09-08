@@ -29,6 +29,26 @@ class FilterRegOptions:
 
 
 @dataclass(frozen=True)
+class FgtOptions:
+    """Improved Fast Gauss Transform controls.
+
+    Only read when a stage selects the ``fgt`` backend. The transform is an
+    approximation with an explicit error/cost trade-off; it is never selected
+    implicitly and never substituted for a failed exact computation.
+    """
+    order: int = 5
+    max_clusters: int = 4096
+    cluster_radius: float = 0.25
+    cutoff_radius: float = 4.0
+
+    def __post_init__(self) -> None:
+        v.integer("order", self.order, 0, 12)
+        v.integer("max_clusters", self.max_clusters, 1, 1000000)
+        v.real("cluster_radius", self.cluster_radius)
+        v.real("cutoff_radius", self.cutoff_radius)
+
+
+@dataclass(frozen=True)
 class AnalyticOptions:
     max_iterations: int = 220
     min_degree: int = 1
@@ -39,6 +59,7 @@ class AnalyticOptions:
     min_sigma2: float = 1e-12
     rank_tolerance: float = 1e-12
     min_mass: float = 1e-12
+    backend: str = "direct"
     initialization: str = "auto"
     stable_patience: int = 5
     no_improve_patience: int = 8
@@ -54,6 +75,9 @@ class AnalyticOptions:
         if v.real("rank_tolerance", self.rank_tolerance) >= 1:
             raise ValueError("rank_tolerance must be < 1")
         v.real("min_mass", self.min_mass)
+        if self.backend not in ("direct", "fgt"):
+            raise ValueError("analytic backend must be 'direct' or 'fgt'; the lattice backends "
+                             "normalize the posterior in the other direction")
         if self.initialization not in ("auto", "cpd", "filterreg"):
             raise ValueError("initialization must be 'auto', 'cpd' or 'filterreg'")
         for name in ("stable_patience", "no_improve_patience", "min_iterations"):

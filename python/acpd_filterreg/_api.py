@@ -5,11 +5,11 @@ from importlib import import_module
 from typing import Any, Literal, Protocol
 import numpy as np
 from . import _validation as v
-from ._options import AnalyticOptions, FilterRegOptions
+from ._options import AnalyticOptions, FgtOptions, FilterRegOptions
 from ._result import RegistrationResult
 
 Engine = Literal["cpp", "rust"]
-Backend = Literal["direct", "permutohedral", "permutohedral_noblur", "probreg"]
+Backend = Literal["direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt"]
 Method = Literal["rigid", "analytic", "nonrigid"]
 
 
@@ -18,7 +18,7 @@ class NativeEngine(Protocol):
     def registration(self, fixed: np.ndarray, moving: np.ndarray, options: dict[str, Any],
                      rotation: np.ndarray, translation: np.ndarray, target_normals: np.ndarray) -> dict[str, Any]: ...
     def gaussian_sum(self, sources: np.ndarray, queries: np.ndarray, values: np.ndarray,
-                     sigma2: float, backend: str) -> np.ndarray: ...
+                     sigma2: float, backend: str, fgt: dict[str, Any]) -> np.ndarray: ...
     def posterior_stats(self, fixed: np.ndarray, moving: np.ndarray, sigma2: float,
                         w: float, filterreg: bool, backend: str) -> dict[str, Any]: ...
     def permutohedral_filter(self, features: np.ndarray, values: np.ndarray, with_blur: bool,
@@ -35,7 +35,7 @@ def method_names() -> tuple[str, ...]:
 
 
 def backend_names() -> tuple[str, ...]:
-    return ("direct", "permutohedral", "permutohedral_noblur", "probreg")
+    return ("direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt")
 
 
 def engine_names() -> tuple[str, ...]:
@@ -55,8 +55,15 @@ def _get_engine(engine: str) -> NativeEngine:
         ) from error
 
 
+def _fgt(fgt: FgtOptions | None) -> dict[str, Any]:
+    fgt = FgtOptions() if fgt is None else fgt
+    if not isinstance(fgt, FgtOptions):
+        raise TypeError("fgt must be FgtOptions")
+    return {f"fgt_{key}": value for key, value in asdict(fgt).items()}
+
+
 def _options(method: str, backend: str, rigid: FilterRegOptions,
-             analytic: AnalyticOptions) -> dict[str, Any]:
+             analytic: AnalyticOptions, fgt: FgtOptions | None = None) -> dict[str, Any]:
     out: dict[str, Any] = {"method": method, "backend": backend}
     for prefix, stage in (("rigid", rigid), ("analytic", analytic)):
         for key, value in asdict(stage).items():
@@ -67,12 +74,14 @@ def _options(method: str, backend: str, rigid: FilterRegOptions,
             elif isinstance(value, np.floating):
                 value = float(value)
             out[f"{prefix}_{key}"] = value
+    out.update(_fgt(fgt))
     return out
 
 
 def registration(fixed: Any, moving: Any, *, method: Method = "nonrigid", engine: Engine = "cpp",
                  backend: Backend = "permutohedral",
                  rigid: FilterRegOptions | None = None, analytic: AnalyticOptions | None = None,
+                 fgt: FgtOptions | None = None,
                  initial_rotation: Any = None, initial_translation: Any = None, target_normals: Any = None,
                  copy: bool = False) -> RegistrationResult:
     """Register moving -> fixed in 2D or 3D. The first argument is ALWAYS fixed.
@@ -80,7 +89,9 @@ def registration(fixed: Any, moving: Any, *, method: Method = "nonrigid", engine
     rigid: FilterReg point-to-point rigid EM, no scale.
     analytic: standalone compositional Analytic-CPD from the supplied/identity pose.
     nonrigid: FilterReg first, then freeze that pose and fit analytic residual maps.
-    sigma2 options use input squared units; min_sigma2 and tolerance are normalized. ACPD always uses the direct posterior.
+    sigma2 options use input squared units; min_sigma2 and tolerance are normalized.
+    backend selects the FilterReg E-step; analytic.backend selects the ACPD E-step
+    ("direct" exact by default, "fgt" for the explicitly chosen IFGT approximation).
     target_normals is required for point-to-plane (point-to-line in 2D).
     """
     if method not in method_names():
@@ -96,8 +107,11 @@ def registration(fixed: Any, moving: Any, *, method: Method = "nonrigid", engine
         raise ValueError("registration requires at least d+1 points in each cloud")
     rigid = FilterRegOptions() if rigid is None else rigid
     analytic = AnalyticOptions() if analytic is None else analytic
+    fgt = FgtOptions() if fgt is None else fgt
     if not isinstance(rigid, FilterRegOptions) or not isinstance(analytic, AnalyticOptions):
         raise TypeError("rigid/analytic must be FilterRegOptions/AnalyticOptions")
+    if not isinstance(fgt, FgtOptions):
+        raise TypeError("fgt must be FgtOptions")
     rotation = np.eye(d) if initial_rotation is None else v.array("initial_rotation", initial_rotation, 2, copy=copy)
     translation = np.zeros(d) if initial_translation is None else v.array("initial_translation", initial_translation, 1, copy=copy)
     if rotation.shape != (d, d) or translation.shape != (d,):
@@ -111,7 +125,7 @@ def registration(fixed: Any, moving: Any, *, method: Method = "nonrigid", engine
         raise ValueError("point-to-plane requires target_normals")
     if method == "analytic" and analytic.initialization == "filterreg" and analytic.sigma2 is None:
         raise ValueError("standalone analytic mode has no FilterReg variance to inherit")
-    raw = _get_engine(engine).registration(x, y, _options(method, backend, rigid, analytic), rotation, translation, normals)
+    raw = _get_engine(engine).registration(x, y, _options(method, backend, rigid, analytic, fgt), rotation, translation, normals)
     return RegistrationResult.from_native(raw, engine)
 
 
@@ -132,10 +146,11 @@ def registration_nonrigid(fixed: Any, moving: Any, **kwargs: Any) -> Registratio
 
 def gaussian_sum(sources: Any, queries: Any, values: Any, *, sigma2: float,
                  engine: Engine = "cpp", backend: Backend = "direct",
-                 copy: bool = False) -> np.ndarray:
-    """Direct Gaussian sum, or its explicitly selected lattice approximation.
+                 fgt: FgtOptions | None = None, copy: bool = False) -> np.ndarray:
+    """Direct Gaussian sum, or its explicitly selected lattice/IFGT approximation.
 
     No row normalization: backend-specific lattice scaling/gain is preserved.
+    fgt is read only when backend == "fgt".
     """
     b = v.backend(backend)
     variance = v.real("sigma2", sigma2)
@@ -143,7 +158,7 @@ def gaussian_sum(sources: Any, queries: Any, values: Any, *, sigma2: float,
     value = v.array("values", values, 2, copy=copy)
     if s.shape[1] != q.shape[1] or len(value) != len(s):
         raise ValueError("inconsistent Gaussian transform dimensions")
-    return np.asarray(_get_engine(engine).gaussian_sum(s, q, value, variance, b))
+    return np.asarray(_get_engine(engine).gaussian_sum(s, q, value, variance, b, _fgt(fgt)))
 
 
 @dataclass(frozen=True)

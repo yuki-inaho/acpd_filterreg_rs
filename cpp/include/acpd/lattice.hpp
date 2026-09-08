@@ -97,6 +97,7 @@ namespace acpd {
         std::string mode = "direct";
     };
     FilteredValues lattice_transform(const Matrix& sources, const Matrix& queries,
-    const Matrix& values, double sigma2, Backend backend);
+    const Matrix& values, double sigma2, Backend backend,
+    const FgtOptions& fgt = FgtOptions());
 }
 // namespace acpd

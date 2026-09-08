@@ -1,4 +1,4 @@
-//! SOURCE_ONLY in this release: these tests have not been compiled or executed.
+//! Compiled and executed since 0.2.1 (see validation/rerun_2026-09-08/cargo_test.log).
 //! Frozen upstream expectations are shared with the executed C++ comparison.
 use acpd_core::*;
 use acpd_core::analytic::fit_analytic;
@@ -46,9 +46,9 @@ fn lattice_linearity_cache_and_gain() -> RegResult<()> {
 fn posterior_normalization_and_variance_dimension() -> RegResult<()> {
     for d in [2,3] {
         let x=cloud(29,d);let y=cloud(37,d)*0.95;
-        let cpd=posterior_statistics(&x,&y,0.7,0.0,false,Backend::Direct,None,None)?;
+        let cpd=posterior_statistics(&x,&y,0.7,0.0,false,Backend::Direct,None,None,&FgtOptions::default())?;
         assert!((cpd.mass-x.nrows() as f64).abs()<1e-12);
-        let inv=posterior_statistics(&x,&y,0.7,0.0,true,Backend::Direct,None,None)?;
+        let inv=posterior_statistics(&x,&y,0.7,0.0,true,Backend::Direct,None,None,&FgtOptions::default())?;
         assert!((&inv.rho-Vector::from_element(y.nrows(),1.0)).amax()<1e-12);
         let z=&y*1.1;
         let direct_sse:f64=(0..y.nrows()).map(|i| cpd.rho[i]*z.row(i).norm_squared()

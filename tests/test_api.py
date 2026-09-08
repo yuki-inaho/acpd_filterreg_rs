@@ -264,3 +264,45 @@ def test_divergence_radius_is_validated():
     for value in (1.0, 0.5, -1.0, float('nan')):
         with pytest.raises(ValueError):
             reg.AnalyticOptions(divergence_radius=value)
+
+
+def error_of(points, reference):
+    return float(np.sqrt(np.mean(np.sum((points-reference)**2,axis=1))))
+
+
+@pytest.mark.parametrize('d', [2,3])
+def test_analytic_backend_fgt_tracks_the_exact_posterior(d, engine):
+    """The ACPD E-step may be approximated, but only when explicitly asked for.
+
+    The lattice backends normalize the posterior in the opposite direction and are
+    rejected for this stage; fgt is the only approximation offered here.
+    """
+    x,y=pair(d)
+    rigid=reg.FilterRegOptions(sigma2=.04)
+    exact=reg.registration_nonrigid(x,y,engine=engine,rigid=rigid)
+    approximate=reg.registration_nonrigid(x,y,engine=engine,rigid=rigid,
+        analytic=reg.AnalyticOptions(backend='fgt'))
+    # Both must improve on the frozen pose the analytic stage starts from.
+    assert error_of(exact.transformed,x)<error_of(exact.rigid_transformed,x)
+    assert error_of(approximate.transformed,x)<error_of(approximate.rigid_transformed,x)
+    assert all(item.lattice_mode=='fgt' for item in approximate.analytic_stage.history)
+    assert all(item.lattice_mode=='direct' for item in exact.analytic_stage.history)
+
+
+@pytest.mark.parametrize('bad', [{'backend':'permutohedral'},{'backend':'probreg'},{'backend':'nope'}])
+def test_analytic_backend_rejects_lattice_and_unknown(bad):
+    with pytest.raises(ValueError):
+        reg.AnalyticOptions(**bad)
+
+
+@pytest.mark.parametrize('bad', [{'order':-1},{'order':13},{'max_clusters':0},
+                                 {'cluster_radius':0.0},{'cutoff_radius':-1.0}])
+def test_fgt_options_are_validated(bad):
+    with pytest.raises(ValueError):
+        reg.FgtOptions(**bad)
+
+
+def test_fgt_is_in_the_backend_list_and_never_implicit():
+    assert 'fgt' in reg.backend_names()
+    assert reg.AnalyticOptions().backend == 'direct'
+    assert reg.FgtOptions().order == 5

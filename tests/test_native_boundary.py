@@ -87,7 +87,7 @@ def test_native_releases_gil_during_gaussian_work(native):
         ready.wait();time.sleep(.015);stamp.append(time.perf_counter())
     thread=threading.Thread(target=worker);thread.start()
     start=time.perf_counter();ready.set()
-    out=native.gaussian_sum(sources,queries,values,.3,'direct')
+    out=native.gaussian_sum(sources,queries,values,.3,'direct',_api._fgt(None))
     end=time.perf_counter();thread.join(timeout=5)
     assert out.shape==(5000,2) and np.isfinite(out).all()
     assert end-start>.025,'Timing probe too short: enlarge the problem before accepting this test'

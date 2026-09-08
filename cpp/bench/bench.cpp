@@ -51,19 +51,30 @@ int main(int argc,char** argv) {
     Options options;
     options.backend=backend_from_string(backend);
     options.rigid.sigma2=0.08;
+    options.fgt.order=integer(argc,argv,"--fgt-order",options.fgt.order);
+    options.fgt.max_clusters=integer(argc,argv,"--fgt-max-clusters",options.fgt.max_clusters);
+    options.fgt.cluster_radius=std::stod(argument(argc,argv,"--fgt-cluster-radius",
+    std::to_string(options.fgt.cluster_radius)));
+    options.fgt.cutoff_radius=std::stod(argument(argc,argv,"--fgt-cutoff-radius",
+    std::to_string(options.fgt.cutoff_radius)));
+    // ACPD E-step backend, independent of the FilterReg backend above.
+    options.analytic.backend=backend_from_string(argument(argc,argv,"--analytic-backend","direct"));
     if(stage=="estep") {
         // Isolates the Gaussian transform: no M-step, no stopping logic.
+        const double sigma2=std::stod(argument(argc,argv,"--sigma2","0.05"));
         const auto begin=std::chrono::steady_clock::now();
         double mass=0;
         int vertices=0;
         for(int r=0;r<reps;++r) {
-            const Statistics statistics=posterior_statistics(fixed,moving,0.05,0.1,true,options.backend);
+            const Statistics statistics=posterior_statistics(fixed,moving,sigma2,0.1,true,options.backend,
+            Matrix(),nullptr,options.fgt);
             mass+=statistics.mass;
             vertices=statistics.vertices;
         }
         const double seconds=std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count();
         std::cout<<"{\"stage\":\"estep\",\"backend\":\""<<backend<<"\",\"n\":"<<n<<",\"d\":"<<d
         <<",\"reps\":"<<reps<<",\"seconds\":"<<seconds<<",\"lattice_vertices\":"<<vertices
+        <<",\"sigma2\":"<<sigma2
         <<",\"gaussian_pairs\":"<<(backend=="direct"?static_cast<long long>(n)*n:0LL)
         <<",\"checksum\":"<<mass<<"}\n";
         return 0;
@@ -96,6 +107,7 @@ int main(int argc,char** argv) {
     <<",\"max_degree_reached\":"<<degree
     <<",\"mstep_row_basis_squared\":"<<design_work
     <<",\"pair\":\""<<pairing<<"\""
+    <<",\"analytic_backend\":\""<<name(options.analytic.backend)<<"\""
     <<",\"stop_reason\":\""<<result.analytic_stage.stop_reason<<"\""
     <<",\"paired_rms\":"<<std::sqrt(error/fixed.rows())<<"}\n";
     return 0;

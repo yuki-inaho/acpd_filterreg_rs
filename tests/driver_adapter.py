@@ -31,13 +31,16 @@ class Driver:
                 "analytic_min_sigma2", "analytic_min_degree", "analytic_max_degree",
                 "analytic_rank_tolerance", "analytic_min_mass", "analytic_initialization",
                 "analytic_stable_patience", "analytic_no_improve_patience", "analytic_min_iterations",
-                "analytic_improvement_relative", "analytic_rebound_relative", "analytic_divergence_radius")
+                "analytic_improvement_relative", "analytic_rebound_relative", "analytic_divergence_radius",
+                "analytic_backend", "fgt_order", "fgt_max_clusters", "fgt_cluster_radius", "fgt_cutoff_radius")
         return self._run(["registration", x.shape[1], len(x), len(y), len(normals), o["method"], o["backend"],
                           *(o[key] for key in keys)], x, y, r, t, normals)
 
-    def gaussian_sum(self, sources, queries, values, sigma2, backend):
+    def gaussian_sum(self, sources, queries, values, sigma2, backend, fgt):
         return np.asarray(self._run(["gaussian", sources.shape[1], len(sources), len(queries), values.shape[1],
-                                     sigma2, backend], sources, queries, values))
+                                     sigma2, backend, fgt["fgt_order"], fgt["fgt_max_clusters"],
+                                     fgt["fgt_cluster_radius"], fgt["fgt_cutoff_radius"]],
+                                    sources, queries, values))
 
     def posterior_stats(self, x, y, sigma2, w, filterreg, backend):
         return self._run(["stats", x.shape[1], len(x), len(y), sigma2, w, filterreg, backend], x, y)

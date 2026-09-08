@@ -61,3 +61,35 @@ def test_filterreg_fused_moments(d, backend, engine):
 
 
 
+
+
+@pytest.mark.parametrize('d', [2, 3])
+@pytest.mark.parametrize('variance', [0.5, 0.05, 0.005])
+def test_fgt_approximates_the_exact_gaussian_sum(d, variance, engine):
+    """The IFGT is an approximation with a controllable, measured error.
+
+    Its truncation error is bounded by the covering radius in units of
+    h = sqrt(2*sigma2), which the grid clustering keeps at cluster_radius, so the
+    accuracy must not collapse as sigma shrinks.
+    """
+    rng = np.random.default_rng(17+d)
+    x, y = rng.normal(size=(300,d)), rng.normal(size=(260,d))+0.1
+    values = np.column_stack([np.ones(len(x)), x])
+    exact = reg.gaussian_sum(x, y, values, sigma2=variance, backend='direct', engine=engine)
+    approximate = reg.gaussian_sum(x, y, values, sigma2=variance, backend='fgt', engine=engine)
+    scale = max(float(np.abs(exact).max()), 1e-300)
+    assert float(np.abs(approximate-exact).max())/scale < 1e-4
+
+
+def test_fgt_error_shrinks_with_a_smaller_covering_radius(engine):
+    """Accuracy must be a knob, not luck: halving cluster_radius must help."""
+    rng = np.random.default_rng(23)
+    x, y = rng.normal(size=(250,3)), rng.normal(size=(220,3))+0.1
+    values = np.ones((len(x),1))
+    exact = reg.gaussian_sum(x, y, values, sigma2=0.2, backend='direct', engine=engine)
+    errors = []
+    for radius in (1.0, 0.25):
+        got = reg.gaussian_sum(x, y, values, sigma2=0.2, backend='fgt', engine=engine,
+                               fgt=reg.FgtOptions(cluster_radius=radius, order=3))
+        errors.append(float(np.abs(got-exact).max()))
+    assert errors[1] < errors[0]

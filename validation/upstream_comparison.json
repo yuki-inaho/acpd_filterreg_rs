@@ -22,7 +22,7 @@
     },
     "analytic_mstep": {
       "cases": 8,
-      "max_absolute_difference": 5.995204332975845e-15,
+      "max_absolute_difference": 3.9968028886505635e-15,
       "all_structural_checks_equal": true,
       "pass": true
     },

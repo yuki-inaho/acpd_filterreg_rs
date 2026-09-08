@@ -1,4 +1,4 @@
-# acpd-filterreg 0.2.1 — 論文・添付実装照合による是正版（DoD達成）
+# acpd-filterreg 0.3.0 — 論文・添付実装照合による是正版（DoD達成・精度/速度改善）
 
 2次元・3次元の剛体FilterRegと逐次合成Analytic-CPDを、独立したC++数値核／nanobind接続とRust数値核／PyO3接続で実装します。
 **前回版の全対／半径探索による代用を廃止し、実際のpermutohedral格子を実装しました。**
@@ -39,14 +39,18 @@
 二段目では回転・並進の独立変数を更新しません。ただし、原論文どおりTaylorの定数・一次項を残しており、
 残差写像から剛体様の変位を厳密に排除する一意分解ではありません。剛体直交投影、隠れた正則化、変位上限、減衰はありません。
 
-## 実格子法の区別
+## E-stepバックエンドの区別
 
 | backend | E-stepの計算 |
 |---|---|
 | `permutohedral`（既定） | `[moving,fixed]` と `[0,values]` の拡張入力。重心補間Splat → 全d+1軸Blur → Slice |
 | `permutohedral_noblur` | 原FilterRegの観測専用格子。Splat後にBlurを省略、問い合わせ側の頂点は追加せずSlice。固定分散なら格子を再利用 |
 | `probreg` | 添付probregと同じ格子数判定 `L > 0.015 N` により、拡張入力のBlur省略版へ切り替え。probregの利得係数を保持 |
-| `direct` | 診断・式照合用の全点対ガウス和。明示指定時だけ使用 |
+| `direct` | 全点対ガウス和。式照合の基準であり、明示指定時だけ使用 |
+| `fgt` | 明示選択のIFGT近似。格子中心まわりのTaylor展開。**両論文の実装にはありません** |
+
+ACPD段のE-stepは `AnalyticOptions(backend=...)` で別に選びます。既定は厳密な `direct` で、`fgt` だけが代替です。
+格子バックエンドはCPDと事後確率の正規化方向が逆のため、ACPD段では拒否されます。
 
 `permutohedral_noblur` と `probreg` は同一ではありません。前者にはprobregの利得係数がなく、観測以外の頂点を構築しません。
 **Blur省略は「半径探索への代用」ではありません。どちらも実際のpermutohedral格子の重心補間を使用します。**

@@ -10,8 +10,9 @@ pub struct Statistics {
     pub mass: f64, pub nll: f64, pub vertices: usize, pub unsupported: usize,
     pub lattice_mode: String,
 }
-pub fn gaussian_sum(s: &Matrix, q: &Matrix, v: &Matrix, sigma2: f64, backend: Backend) -> RegResult<Matrix> {
-    Ok(lattice_transform(s,q,v,sigma2,backend)?.values)
+pub fn gaussian_sum(s: &Matrix, q: &Matrix, v: &Matrix, sigma2: f64, backend: Backend,
+fgt: &FgtOptions) -> RegResult<Matrix> {
+    Ok(lattice_transform(s,q,v,sigma2,backend,fgt)?.values)
 }
 pub fn moment_values(x: &Matrix, normals: Option<&Matrix>) -> RegResult<Matrix> {
     validate_cloud(x,"fixed")?;
@@ -50,7 +51,7 @@ pub fn initial_variance(x: &Matrix, y: &Matrix) -> RegResult<f64> {
 }
 pub fn posterior_statistics(
 x: &Matrix, y: &Matrix, sigma2: f64, w: f64, inverse: bool, backend: Backend,
-normals: Option<&Matrix>, cache: Option<&FixedNoBlurLattice>,
+normals: Option<&Matrix>, cache: Option<&FixedNoBlurLattice>, fgt: &FgtOptions,
 ) -> RegResult<Statistics> {
     validate_pair(x,y,false)?;
     positive(sigma2,"sigma2")?;
@@ -60,8 +61,8 @@ normals: Option<&Matrix>, cache: Option<&FixedNoBlurLattice>,
     if let Some(n) = normals {
         validate_normals(n,x)?;
     }
-    if !inverse && backend != Backend::Direct {
-        return Err(invalid("paper-faithful Analytic-CPD uses direct posterior computation"));
+    if !inverse && backend != Backend::Direct && backend != Backend::Fgt {
+        return Err(invalid("Analytic-CPD accepts the exact direct posterior or the explicitly selected fgt approximation; lattice backends normalize in the other direction"));
     }
     let (m,n,d) = (y.nrows(),x.nrows(),x.ncols());
     let (centers,queries) = if inverse {
@@ -84,13 +85,49 @@ normals: Option<&Matrix>, cache: Option<&FixedNoBlurLattice>,
             0
         },d),mass:0.0,nll:0.0,vertices:0,unsupported:0,lattice_mode:"direct".into()
     };
-    if inverse && backend != Backend::Direct {
+    if !inverse && backend == Backend::Fgt {
+        // Two O(N+M) transforms replace the O(NM) streaming loop: first the per-fixed-point
+        // support G_j = sum_i K_ij, then the moving-point moments weighted by 1/(G_j + C).
+        // Same posterior as the direct branch, evaluated approximately. This branch works in
+        // linear space, so it needs a representable outlier constant; direct stays the
+        // log-sum-exp reference.
+        let outlier = if w == 0.0 {
+            0.0
+        } else {
+            logc.exp()
+        };
+        if !outlier.is_finite() {
+            return Err(numerical("fgt posterior needs a representable outlier constant; use the direct backend"));
+        }
+        let (support,_) = crate::fgt::fgt_transform(y,x,&Matrix::from_element(m,1,1.0),sigma2,fgt)?;
+        let mut weighted = moment_values(x,None)?;
+        for j in 0..n {
+            let denominator = support[(j,0)]+outlier;
+            if !(denominator > 0.0) {
+                return Err(numerical("fgt posterior has no representable support"));
+            }
+            out.nll -= denominator.ln()+logfactor;
+            for c in 0..weighted.ncols() {
+                weighted[(j,c)] /= denominator;
+            }
+        }
+        let (moments,cost) = crate::fgt::fgt_transform(x,y,&weighted,sigma2,fgt)?;
+        out.vertices = cost.clusters;
+        out.lattice_mode = "fgt".into();
+        for i in 0..m {
+            out.rho[i] = moments[(i,0)].max(0.0);
+            for a in 0..d {
+                out.px[(i,a)] = moments[(i,a+1)];
+            }
+            out.x2[i] = moments[(i,d+1)].max(0.0);
+        }
+    } else if inverse && backend != Backend::Direct {
         let filtered = if let (Backend::PermutohedralNoBlur,Some(cache)) = (backend,cache) {
             FilteredValues {
                 values:cache.slice(&(y/sigma2.sqrt()))?,vertices:cache.lattice_size(),mode:"original_noblur".into()
             }
         } else {
-            lattice_transform(x,y,&moment_values(x,normals)?,sigma2,backend)?
+            lattice_transform(x,y,&moment_values(x,normals)?,sigma2,backend,fgt)?
         };
         out.vertices = filtered.vertices;
         out.lattice_mode = filtered.mode;

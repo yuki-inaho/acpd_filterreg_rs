@@ -1,4 +1,4 @@
-# 操作仕様 0.2.1
+# 操作仕様 0.3.0
 
 ## 契約
 
@@ -43,7 +43,7 @@ E-stepで平均した法線を単位長へ再正規化しません。低い平�
 
 | 設定 | 既定 | 内容 |
 |---|---:|---|
-| max_iterations | 55 | 全次数を合わせた反復予算 |
+| max_iterations | 220 | 全次数を合わせた反復予算の**上限**。次数継続により最高次数の収束で早期終了する |
 | min_degree / max_degree | 1 / 10 | 総次数の範囲。実行次数は有効点数により低減 |
 | tolerance | 1e-7 | 内部残差と相対変化の停止しきい値 |
 | w | 0.1 | CPD外れ値重み |
@@ -51,7 +51,9 @@ E-stepで平均した法線を単位長へ再正規化しません。低い平�
 | min_sigma2 | 1e-12 | 正規化二乗単位の下限 |
 | rank_tolerance | 1e-12 | 最大特異値に対する切捨てしきい値 |
 | min_mass | 1e-12 | 重み付き当てはめから除外する微小事後質量 |
-| initialization | cpd | 全対初期化。filterregは明示的な分散継承拡張 |
+| initialization | auto | 宣言methodで決定。nonrigid→filterreg（剛体段の分散を継承）、analytic→cpd（論文の全対初期化）。cpd/filterregの明示指定も可 |
+| backend | direct | ACPD段のE-step。厳密な直接法が既定。fgtは明示選択のIFGT近似。格子backendは正規化の向きが逆のため拒否 |
+| divergence_radius | 100.0 | 固定点群半径の何倍を超えた反復を発散として拒否するか。停止規則であり推定値への制約ではない |
 | stable_patience | 5 | 小変化の連続回数／内部反発の待機回数 |
 | no_improve_patience | 8 | 有意な改善がない反復の上限 |
 | min_iterations | 6 | 待機型停止を許す最小反復数 |
@@ -91,3 +93,34 @@ start以降のみSplatし全行Sliceします。reverseはBlur軸順の逆転で
 C++では`std::invalid_argument`と`acpd::NumericalError`、Rustでは`Error::Invalid`と`Error::Numerical`を使用します。
 GIL解放の前にネイティブ所有の作業配列へコピーし、結果にも所有メモリを付けます。
 Rust接続とnanobind接続のこれらの契約は実装済みですが、実拡張経由の受入試験は本配布時点では未実行です。
+
+## FgtOptions
+
+`backend="fgt"`（FilterReg段）または `AnalyticOptions(backend="fgt")`（ACPD段）を選んだときだけ読まれます。
+既定では使われず、厳密計算が失敗したときの代替として自動選択されることもありません。
+
+| 名前 | 既定 | 意味 |
+|---|---|---|
+| order | 5 | クラスタ中心まわりTaylor展開の打切り次数。項数は C(order+d, d) |
+| max_clusters | 4096 | 中心数の上限。被覆半径が満たせなかったことは内部で記録される |
+| cluster_radius | 0.25 | 目標被覆半径。単位は h = sqrt(2σ²)。小さいほど高精度・高コスト |
+| cutoff_radius | 4.0 | h 単位で、この距離より遠いクラスタは問い合わせ点で無視する |
+
+計測値（d=3、n=300/260、値2列、既定 order=5・cluster_radius=0.25）では、
+σ²を0.5から0.0005まで動かしても厳密和に対する最大相対誤差は 5×10⁻⁶ 以下でした。
+
+## 停止理由
+
+`stop_reason` は次のいずれかです。
+
+| 値 | 意味 |
+|---|---|
+| not_run | その段階を実行していない |
+| iteration_limit | 反復上限に到達 |
+| tolerance | 剛体段が移動量と分散変化の両方で収束 |
+| residual_tolerance | 内部残差が tolerance を下回った |
+| stable_tolerance | 最高次数で小変化が stable_patience 回続いた |
+| internal_rebound | 最良値から rebound_relative を超えて悪化した |
+| no_improvement | 有意な改善がないまま no_improve_patience 回経過 |
+| insufficient_posterior_mass | 事後質量または有効行数が当てはめに足りない |
+| numerical_divergence | 反復が divergence_radius を超えた、または数値誤差が発生した。最良状態を返す |
