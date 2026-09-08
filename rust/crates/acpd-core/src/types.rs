@@ -92,9 +92,9 @@ pub struct AnalyticOptions {
 impl Default for AnalyticOptions {
     fn default() -> Self {
         Self {
-            max_iterations: 55, min_degree: 1, max_degree: 10,
+            max_iterations: 220, min_degree: 1, max_degree: 10,
             tolerance: 1e-7, w: 0.1, sigma2: -1.0, min_sigma2: 1e-12,
-            rank_tolerance: 1e-12, min_mass: 1e-12, initialization: "cpd".into(),
+            rank_tolerance: 1e-12, min_mass: 1e-12, initialization: "auto".into(),
             stable_patience: 5, no_improve_patience: 8, min_iterations: 6,
             improvement_relative: 1e-6, rebound_relative: 1e-3
         }
@@ -162,7 +162,7 @@ impl AnalyticOptions {
             return Err(invalid("rank_tolerance must be less than one"));
         }
         positive(self.min_mass, "min_mass")?;
-        if !["cpd", "filterreg"].contains(&self.initialization.as_str()) {
+        if !["auto", "cpd", "filterreg"].contains(&self.initialization.as_str()) {
             return Err(invalid("invalid analytic initialization"));
         }
         if self.stable_patience == 0 || self.no_improve_patience == 0 || self.min_iterations == 0 {

@@ -90,8 +90,13 @@ namespace acpd {
         if(o.method!=Method::Rigid) {
             const auto& opt=o.analytic;
             Stage& stage=out.analytic_stage;
+            // "auto" is resolved from the declared method, never from a runtime quality
+            // test. Nonrigid inherits the variance the rigid stage annealed to; standalone
+            // analytic uses the ACPD/CPD all-pair initialization of the paper.
+            const std::string initialization=opt.initialization=="auto"
+            ?(o.method==Method::Nonrigid?std::string("filterreg"):std::string("cpd")):opt.initialization;
             if(opt.sigma2>0) sigma2=opt.sigma2/scale/scale;
-            else if(opt.initialization=="cpd") sigma2=initial_variance(x,y);
+            else if(initialization=="cpd") sigma2=initial_variance(x,y);
             sigma2=std::max(sigma2,opt.min_sigma2);
             stage.initial_sigma2=sigma2;
             stage.stop_reason="iteration_limit";
@@ -100,7 +105,18 @@ namespace acpd {
             std::size_t best_steps=0;
             int stable=0,no_improve=0,previous_degree=-1;
             const auto schedule=degree_schedule(opt.max_iterations,opt.min_degree,opt.max_degree);
-            for(int it=0;it<opt.max_iterations;++it) {
+            // Degree continuation: the schedule bounds how long each degree MAY run,
+            // it does not require running that long. Convergence at a degree below
+            // max_degree advances the continuation instead of ending the whole stage;
+            // only the highest scheduled degree may terminate it. See
+            // docs/SOURCE_DIFFERENCES.md, Analytic-CPD 10.
+            std::size_t cursor=0;
+            const auto advance_degree=[&schedule](std::size_t at)->std::size_t {
+                const int degree=schedule[at];
+                while(at<schedule.size()&&schedule[at]<=degree) ++at;
+                return at;
+            };
+            for(int it=0;it<opt.max_iterations&&cursor<schedule.size();++it,++cursor) {
                 const Statistics stats=posterior_statistics(x,y,sigma2,opt.w,false,Backend::Direct);
                 int active=0;
                 for(int i=0;i<stats.rho.size();++i) if(stats.rho[i]>opt.min_mass) ++active;
@@ -108,7 +124,7 @@ namespace acpd {
                     stage.stop_reason="insufficient_posterior_mass";
                     break;
                 }
-                const Fit fit=fit_analytic(y,stats,schedule[it],opt);
+                const Fit fit=fit_analytic(y,stats,schedule[cursor],opt);
                 if(previous_degree>=0&&previous_degree!=fit.step.degree) {
                     stable=0;
                     no_improve=0;
@@ -125,7 +141,7 @@ namespace acpd {
                 y=fit.next;
                 sigma2=next_sigma;
                 stage.history.push_back({
-                    it+1,schedule[it],fit.step.degree,fit.active,fit.rank,sigma2,stats.nll,motion,fit.fit_rms,0,"direct"
+                    it+1,schedule[cursor],fit.step.degree,fit.active,fit.rank,sigma2,stats.nll,motion,fit.fit_rms,0,"direct"
                 });
                 // Fig.1: save the actual best state. Patience uses the source's
                 // significant-improvement threshold, but never loses a lower score.
@@ -144,17 +160,25 @@ namespace acpd {
                     break;
                 }
                 if(it+1>=opt.min_iterations) {
-                    if(stable>=opt.stable_patience) {
-                        stage.converged=true;
-                        stage.stop_reason="stable_tolerance";
-                        break;
-                    }
-                    if(no_improve>=opt.stable_patience&&score>best_score*(1+opt.rebound_relative)+1e-12) {
-                        stage.stop_reason="internal_rebound";
-                        break;
-                    }
-                    if(no_improve>=opt.no_improve_patience) {
-                        stage.stop_reason="no_improvement";
+                    const bool is_stable=stable>=opt.stable_patience;
+                    const bool is_rebound=no_improve>=opt.stable_patience&&score>best_score*(1+opt.rebound_relative)+1e-12;
+                    const bool is_stalled=no_improve>=opt.no_improve_patience;
+                    if(is_stable||is_rebound||is_stalled) {
+                        const std::size_t next=advance_degree(cursor);
+                        if(next<schedule.size()) {
+                            // Converged at this degree with higher degrees still scheduled:
+                            // continue the sequence rather than reporting the whole stage done.
+                            cursor=next-1;
+                            stable=0;
+                            no_improve=0;
+                            previous_degree=-1;
+                            continue;
+                        }
+                        if(is_stable) {
+                            stage.converged=true;
+                            stage.stop_reason="stable_tolerance";
+                        }
+                        else stage.stop_reason=is_rebound?"internal_rebound":"no_improvement";
                         break;
                     }
                 }

@@ -120,10 +120,22 @@ target_normals: Option<&Matrix>,
     let rigid_transformed = apply_pose(moving,&rotation,&world_translation)?;
     if options.method != Method::Rigid {
         let opt = &options.analytic;
+        // "auto" is resolved from the declared method, never from a runtime quality test.
+        // Nonrigid inherits the variance the rigid stage annealed to; standalone analytic
+        // uses the ACPD/CPD all-pair initialization of the paper.
+        let resolved_initialization = if opt.initialization == "auto" {
+            if options.method == Method::Nonrigid {
+                "filterreg"
+            }else {
+                "cpd"
+            }
+        }else {
+            opt.initialization.as_str()
+        };
         if opt.sigma2 > 0.0 {
             sigma2 = opt.sigma2/scale/scale;
         }
-        else if opt.initialization == "cpd" {
+        else if resolved_initialization == "cpd" {
             sigma2 = initial_variance(&x,&y)?;
         }
         sigma2 = sigma2.max(opt.min_sigma2);
@@ -138,7 +150,22 @@ target_normals: Option<&Matrix>,
         let mut no_improve = 0;
         let mut previous_degree: Option<usize> = None;
         let schedule = degree_schedule(opt.max_iterations,opt.min_degree,opt.max_degree)?;
-        for (it,&raw_degree) in schedule.iter().enumerate() {
+        // Degree continuation: the schedule bounds how long each degree MAY run, it does
+        // not require running that long. Convergence at a degree below max_degree advances
+        // the continuation instead of ending the whole stage; only the highest scheduled
+        // degree may terminate it. See docs/SOURCE_DIFFERENCES.md, Analytic-CPD 10.
+        fn advance_degree(schedule: &[usize], at: usize) -> usize {
+            let degree = schedule[at];
+            let mut next = at;
+            while next < schedule.len() && schedule[next] <= degree {
+                next += 1;
+            }
+            next
+        }
+        let mut cursor = 0usize;
+        let mut it = 0usize;
+        while it < opt.max_iterations && cursor < schedule.len() {
+            let raw_degree = schedule[cursor];
             let stats = posterior_statistics(&x,&y,sigma2,opt.w,false,Backend::Direct,None,None)?;
             let active = stats.rho.iter().filter(|&&v| v>opt.min_mass).count();
             if stats.mass <= opt.min_mass || active < exponents(d,opt.min_degree)?.len() {
@@ -192,20 +219,38 @@ target_normals: Option<&Matrix>,
                 break;
             }
             if it+1 >= opt.min_iterations {
-                if stable >= opt.stable_patience {
-                    analytic_stage.converged = true;
-                    analytic_stage.stop_reason = "stable_tolerance".into();
-                    break;
-                }
-                if no_improve >= opt.stable_patience && score > best_score*(1.0+opt.rebound_relative)+1e-12 {
-                    analytic_stage.stop_reason = "internal_rebound".into();
-                    break;
-                }
-                if no_improve >= opt.no_improve_patience {
-                    analytic_stage.stop_reason = "no_improvement".into();
+                let is_stable = stable >= opt.stable_patience;
+                let is_rebound = no_improve >= opt.stable_patience
+                && score > best_score*(1.0+opt.rebound_relative)+1e-12;
+                let is_stalled = no_improve >= opt.no_improve_patience;
+                if is_stable || is_rebound || is_stalled {
+                    let next = advance_degree(&schedule,cursor);
+                    if next < schedule.len() {
+                        // Converged at this degree with higher degrees still scheduled:
+                        // continue the sequence rather than reporting the whole stage done.
+                        cursor = next;
+                        stable = 0;
+                        no_improve = 0;
+                        previous_degree = None;
+                        it += 1;
+                        continue;
+                    }
+                    if is_stable {
+                        analytic_stage.converged = true;
+                        analytic_stage.stop_reason = "stable_tolerance".into();
+                    }
+                    else {
+                        analytic_stage.stop_reason = if is_rebound {
+                            "internal_rebound".into()
+                        }else {
+                            "no_improvement".into()
+                        };
+                    }
                     break;
                 }
             }
+            it += 1;
+            cursor += 1;
         }
         y = best_y;
         sigma2 = best_sigma;

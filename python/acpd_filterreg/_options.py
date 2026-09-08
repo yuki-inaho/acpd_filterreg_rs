@@ -30,7 +30,7 @@ class FilterRegOptions:
 
 @dataclass(frozen=True)
 class AnalyticOptions:
-    max_iterations: int = 55
+    max_iterations: int = 220
     min_degree: int = 1
     max_degree: int = 10
     tolerance: float = 1e-7
@@ -39,7 +39,7 @@ class AnalyticOptions:
     min_sigma2: float = 1e-12
     rank_tolerance: float = 1e-12
     min_mass: float = 1e-12
-    initialization: str = "cpd"
+    initialization: str = "auto"
     stable_patience: int = 5
     no_improve_patience: int = 8
     min_iterations: int = 6
@@ -53,8 +53,8 @@ class AnalyticOptions:
         if v.real("rank_tolerance", self.rank_tolerance) >= 1:
             raise ValueError("rank_tolerance must be < 1")
         v.real("min_mass", self.min_mass)
-        if self.initialization not in ("cpd", "filterreg"):
-            raise ValueError("initialization must be 'cpd' or 'filterreg'")
+        if self.initialization not in ("auto", "cpd", "filterreg"):
+            raise ValueError("initialization must be 'auto', 'cpd' or 'filterreg'")
         for name in ("stable_patience", "no_improve_patience", "min_iterations"):
             v.integer(name, getattr(self, name), 1, 100000)
         v.real("improvement_relative", self.improvement_relative, positive=False)

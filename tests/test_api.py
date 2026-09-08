@@ -26,8 +26,18 @@ def test_frozen_pose_composition_and_storage(d, backend, engine, tmp_path):
     np.testing.assert_allclose(h.transform(y),h.transformed,atol=2e-11)
     assert len(h.steps)==h.analytic_stage.best_iteration
     assert all(item.lattice_mode=='direct' for item in h.analytic_stage.history)
+    # Default initialization is "auto": nonrigid inherits the variance the rigid stage
+    # annealed to, so the residual stage is not restarted at the cloud scale.
+    assert analytic.initialization=='auto'
+    assert h.analytic_stage.initial_sigma2==pytest.approx(h.rigid_stage.final_sigma2,rel=2e-13)
+    inherited=reg.registration_nonrigid(x,y,backend=backend,engine=engine,rigid=rigid,
+        analytic=reg.AnalyticOptions(max_iterations=20,max_degree=3,initialization='filterreg'))
+    assert inherited.analytic_stage.initial_sigma2==pytest.approx(h.analytic_stage.initial_sigma2,rel=0,abs=0)
+    # An explicit "cpd" request still uses the ACPD/CPD all-pair initialization.
     expected_initial=((x[:,None]-h.rigid_transformed[None])**2).sum()/(d*len(x)*len(y))
-    assert h.analytic_stage.initial_sigma2==pytest.approx(expected_initial,rel=2e-13)
+    allpairs=reg.registration_nonrigid(x,y,backend=backend,engine=engine,rigid=rigid,
+        analytic=reg.AnalyticOptions(max_iterations=20,max_degree=3,initialization='cpd'))
+    assert allpairs.analytic_stage.initial_sigma2==pytest.approx(expected_initial,rel=2e-13)
     path=tmp_path/'transform.npz';h.save(path);loaded=reg.load_result(path)
     q=np.ascontiguousarray(y[:7]+.013)
     np.testing.assert_allclose(loaded.transform(q),h.transform(q),atol=1e-13)
@@ -192,3 +202,36 @@ def test_malformed_saved_state_is_rejected(mutation, engine, tmp_path):
     arrays['metadata']=np.array(json.dumps(metadata))
     invalid=tmp_path/'invalid.npz';np.savez(invalid,**arrays)
     with pytest.raises((ValueError,TypeError)):reg.load_result(invalid)
+
+
+@pytest.mark.parametrize('d', [2,3])
+def test_degree_continuation_is_not_cut_short_by_a_low_degree_plateau(d, engine):
+    """Convergence at one degree advances the continuation; it never ends the stage.
+
+    The schedule spends most of its budget on low degrees. Treating a low-degree
+    plateau as overall convergence returned the affine-only solution and made the
+    outcome non-monotone in `max_iterations`.
+    """
+    x,y=pair(d)
+    options=reg.AnalyticOptions(max_iterations=220,max_degree=4)
+    h=reg.registration_nonrigid(x,y,engine=engine,rigid=reg.FilterRegOptions(sigma2=.04),analytic=options)
+    degrees=h.degree_history
+    assert degrees, 'the analytic stage must run'
+    if h.analytic_stage.stop_reason in ('stable_tolerance','no_improvement','internal_rebound'):
+        assert max(degrees)==options.max_degree, (h.analytic_stage.stop_reason, degrees)
+    # A larger budget is an upper bound, so it must not make the result worse.
+    generous=reg.registration_nonrigid(x,y,engine=engine,rigid=reg.FilterRegOptions(sigma2=.04),
+        analytic=reg.AnalyticOptions(max_iterations=440,max_degree=4))
+    error=lambda r: float(np.sqrt(np.mean(np.sum((r.transformed-x)**2,axis=1))))
+    assert error(generous)<=max(error(h)*1.05,1e-9)
+
+
+@pytest.mark.parametrize('d', [2,3])
+def test_default_nonrigid_beats_the_rigid_stage_it_starts_from(d, engine):
+    """The residual stage must improve on the frozen pose, not undo it."""
+    x,y=pair(d)
+    rigid=reg.FilterRegOptions(sigma2=.04)
+    h=reg.registration_nonrigid(x,y,engine=engine,rigid=rigid)
+    error=lambda p: float(np.sqrt(np.mean(np.sum((p-x)**2,axis=1))))
+    assert error(h.transformed)<error(h.rigid_transformed)
+    assert h.steps, 'the default configuration must produce a residual map'

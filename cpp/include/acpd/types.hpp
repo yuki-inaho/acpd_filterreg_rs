@@ -38,7 +38,11 @@ namespace acpd {
         void validate() const;
     };
     struct AnalyticOptions {
-        int max_iterations = 55;
+        int max_iterations = 220;
+        // Upper bound, not a target: degree continuation ends the stage when the highest
+        // scheduled degree converges. 55 is one DegreeScheduleDecreasingStages unit for
+        // degrees 1..10 and leaves a single iteration at degree 10, too few for the 2D
+        // anneal; 220 is four units with the same decreasing shape.
         int min_degree = 1;
         int max_degree = 10;
         double tolerance = 1e-7;
@@ -47,8 +51,10 @@ namespace acpd {
         double min_sigma2 = 1e-12;
         double rank_tolerance = 1e-12;
         double min_mass = 1e-12;
-        std::string initialization = "cpd";
-        // optional "filterreg" handoff is NOT in ACPD paper
+        std::string initialization = "auto";
+        // "auto" resolves by method: nonrigid -> "filterreg", analytic -> "cpd".
+        // Deterministic and declared, not a quality-triggered fallback.
+        // The "filterreg" variance handoff is NOT in the ACPD paper.
         int stable_patience = 5;
         int no_improve_patience = 8;
         int min_iterations = 6;

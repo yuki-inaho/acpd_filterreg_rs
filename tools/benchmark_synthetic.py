@@ -26,6 +26,18 @@ def symmetric_nn_rms(x,y):
     return float(np.sqrt((distance.min(axis=0).mean()+distance.min(axis=1).mean())/2))
 
 
+def summarize(rows):
+    done=[c for c in rows if c['status']=='executed']
+    return {'cases':len(rows),'exceptions':sum(c['status']=='error' for c in rows),
+      'improved_over_rigid':sum(c.get('improves_over_rigid',False) for c in rows),
+      'regressed_over_rigid':sum(c.get('regresses_over_rigid',False) for c in rows),
+      'unchanged_within_1e_8':sum(c.get('unchanged_within_tolerance',False) for c in rows),
+      'unchanged_map':sum(c.get('steps',-1)==0 for c in rows),
+      'median_rigid_paired_rms':float(np.median([c['rigid_paired_rms'] for c in done])) if done else None,
+      'median_final_paired_rms':float(np.median([c['final_paired_rms'] for c in done])) if done else None,
+      'max_final_paired_rms':float(np.max([c['final_paired_rms'] for c in done])) if done else None}
+
+
 def main() -> None:
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--engine',choices=['cpp','rust','driver'],default='cpp')
@@ -41,7 +53,7 @@ def main() -> None:
             rng=np.random.default_rng(seed);y=rng.uniform(-1,1,(180,d))*np.arange(1,d+1)
             x=y.copy();x[:,0]+=.03*y[:,1]**2+.06
             for backend in ('permutohedral','permutohedral_noblur','direct'):
-                for initialization in ('cpd','filterreg'):
+                for initialization in ('auto','cpd','filterreg'):
                     case={'dimension':d,'seed':seed,'points':len(y),'backend':backend,'initialization':initialization,
                           'initial_symmetric_nn_rms':symmetric_nn_rms(x,y),'initial_paired_rms':rms(x,y),'rigid_sigma2_world':.08,'analytic_degree':10,'analytic_budget':55}
                     start=time.perf_counter()
@@ -64,11 +76,9 @@ def main() -> None:
     report={'execution_path':args.engine,'case_count':len(results),'benchmark_reproduction':False,
       'evaluation_correspondences_used_in_fitting':False,
       'timing_note':'Includes serialization/subprocess when driver; not a cross-method speed measurement',
-      'summary':{'exceptions':sum(c['status']=='error' for c in results),
-        'improved_over_rigid':sum(c.get('improves_over_rigid',False) for c in results),
-        'regressed_over_rigid':sum(c.get('regresses_over_rigid',False) for c in results),
-        'unchanged_within_1e_8':sum(c.get('unchanged_within_tolerance',False) for c in results),
-        'unchanged_map':sum(c.get('steps',-1)==0 for c in results)},'cases':results}
+      'summary':summarize(results),
+      'summary_by_initialization':{k:summarize([c for c in results if c['initialization']==k])
+        for k in ('auto','cpd','filterreg')},'cases':results}
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report['summary'],indent=2))
 if __name__=='__main__':main()

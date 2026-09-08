@@ -4,14 +4,14 @@ version = 4
 
 [[package]]
 name = "acpd-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "nalgebra",
 ]
 
 [[package]]
 name = "acpd-py"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "acpd-core",
  "ndarray",

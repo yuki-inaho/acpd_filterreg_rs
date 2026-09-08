@@ -58,7 +58,7 @@ namespace acpd {
         positive(rank_tolerance,"rank_tolerance");
         if(rank_tolerance>=1) throw std::invalid_argument("rank_tolerance must be <1");
         positive(min_mass,"min_mass");
-        if(initialization!="cpd"&&initialization!="filterreg") throw std::invalid_argument("invalid analytic initialization");
+        if(initialization!="auto"&&initialization!="cpd"&&initialization!="filterreg") throw std::invalid_argument("invalid analytic initialization");
         if(stable_patience<1||no_improve_patience<1||min_iterations<1) throw std::invalid_argument("stopping counts must be positive");
         if(!std::isfinite(improvement_relative)||improvement_relative<0||!std::isfinite(rebound_relative)||rebound_relative<0)
         throw std::invalid_argument("relative stopping thresholds must be finite and nonnegative");
