@@ -88,6 +88,10 @@ pub struct AnalyticOptions {
     pub initialization: String, pub stable_patience: usize,
     pub no_improve_patience: usize, pub min_iterations: usize,
     pub improvement_relative: f64, pub rebound_relative: f64,
+    /// Multiple of the fixed cloud's radius beyond which an iterate is refused. A
+    /// stopping rule only: accepted fits are the paper's unregularized solution,
+    /// never clipped, damped or penalised. Healthy runs stay within 1.9x.
+    pub divergence_radius: f64,
 }
 impl Default for AnalyticOptions {
     fn default() -> Self {
@@ -96,7 +100,7 @@ impl Default for AnalyticOptions {
             tolerance: 1e-7, w: 0.1, sigma2: -1.0, min_sigma2: 1e-12,
             rank_tolerance: 1e-12, min_mass: 1e-12, initialization: "auto".into(),
             stable_patience: 5, no_improve_patience: 8, min_iterations: 6,
-            improvement_relative: 1e-6, rebound_relative: 1e-3
+            improvement_relative: 1e-6, rebound_relative: 1e-3, divergence_radius: 100.0
         }
     }
 }
@@ -171,6 +175,9 @@ impl AnalyticOptions {
         if !self.improvement_relative.is_finite() || self.improvement_relative < 0.0
         || !self.rebound_relative.is_finite() || self.rebound_relative < 0.0 {
             return Err(invalid("relative stopping thresholds must be finite and nonnegative"));
+        }
+        if !self.divergence_radius.is_finite() || self.divergence_radius <= 1.0 {
+            return Err(invalid("divergence_radius must be finite and greater than one"));
         }
         Ok(())
     }

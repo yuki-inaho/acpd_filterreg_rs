@@ -86,6 +86,7 @@ fn options(d:&Bound<'_,PyDict>)->PyResult<core::Options> {
             min_iterations:integer(d,"analytic_min_iterations")?,
             improvement_relative:number(d,"analytic_improvement_relative")?,
             rebound_relative:number(d,"analytic_rebound_relative")?,
+            divergence_radius:number(d,"analytic_divergence_radius")?,
         },
     };
     out.validate().map_err(error)?;

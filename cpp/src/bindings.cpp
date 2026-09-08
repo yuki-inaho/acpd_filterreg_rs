@@ -79,6 +79,7 @@ namespace {
         o.analytic.min_iterations=get<int>(p,"analytic_min_iterations");
         o.analytic.improvement_relative=get<double>(p,"analytic_improvement_relative");
         o.analytic.rebound_relative=get<double>(p,"analytic_rebound_relative");
+        o.analytic.divergence_radius=get<double>(p,"analytic_divergence_radius");
         o.validate();
         return o;
     }

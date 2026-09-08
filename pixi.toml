@@ -27,6 +27,8 @@ scikit-build-core = ">=0.11,<1"
 build = ">=1.2,<2"
 [feature.cpp.tasks]
 build-cpp = { cmd = "python -m pip install --no-deps --no-build-isolation -e ./cpp", depends-on = ["build-api"] }
+bench = "python tools/benchmark_speed.py"
+bench-ir = "python tools/benchmark_speed.py --ir --reps 1"
 core-cpp = "python tools/manage.py core-cpp"
 test-core = { cmd = "python tools/manage.py test-core", depends-on = ["core-cpp"] }
 test-cpp = { cmd = "python tools/manage.py test-cpp", depends-on = ["build-cpp", "core-cpp"] }

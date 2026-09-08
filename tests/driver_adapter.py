@@ -31,7 +31,7 @@ class Driver:
                 "analytic_min_sigma2", "analytic_min_degree", "analytic_max_degree",
                 "analytic_rank_tolerance", "analytic_min_mass", "analytic_initialization",
                 "analytic_stable_patience", "analytic_no_improve_patience", "analytic_min_iterations",
-                "analytic_improvement_relative", "analytic_rebound_relative")
+                "analytic_improvement_relative", "analytic_rebound_relative", "analytic_divergence_radius")
         return self._run(["registration", x.shape[1], len(x), len(y), len(normals), o["method"], o["backend"],
                           *(o[key] for key in keys)], x, y, r, t, normals)
 

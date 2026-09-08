@@ -235,3 +235,32 @@ def test_default_nonrigid_beats_the_rigid_stage_it_starts_from(d, engine):
     error=lambda p: float(np.sqrt(np.mean(np.sum((p-x)**2,axis=1))))
     assert error(h.transformed)<error(h.rigid_transformed)
     assert h.steps, 'the default configuration must produce a residual map'
+
+
+@pytest.mark.parametrize('d', [2,3])
+def test_ill_posed_pair_stops_instead_of_diverging(d, engine):
+    """An unregistrable pair must stop and stay bounded, not throw or fly away.
+
+    The analytic map is a global polynomial constrained only where the posterior
+    supports it. A point that loses support is extrapolated freely, and the
+    rho-weighted variance cannot see it, so such a state could be recorded as the
+    best one. The result used to leave the data extent by 150 orders of magnitude.
+    """
+    rng=np.random.default_rng(7)
+    moving=rng.uniform(-1,1,(300,d))*np.arange(1,d+1)
+    fixed=np.random.default_rng(8).uniform(-1,1,(300,d))*np.arange(1,d+1)
+    result=reg.registration_nonrigid(fixed,moving,engine=engine,rigid=reg.FilterRegOptions(sigma2=.08))
+    assert result.analytic_stage.stop_reason in (
+        'numerical_divergence','iteration_limit','stable_tolerance','no_improvement',
+        'internal_rebound','insufficient_posterior_mass','residual_tolerance')
+    extent=np.linalg.norm(fixed-fixed.mean(axis=0),axis=1).max()
+    reach=np.linalg.norm(result.transformed-fixed.mean(axis=0),axis=1).max()
+    options=reg.AnalyticOptions()
+    assert np.isfinite(result.transformed).all()
+    assert reach<=options.divergence_radius*extent*1.5, (reach, extent)
+
+
+def test_divergence_radius_is_validated():
+    for value in (1.0, 0.5, -1.0, float('nan')):
+        with pytest.raises(ValueError):
+            reg.AnalyticOptions(divergence_radius=value)

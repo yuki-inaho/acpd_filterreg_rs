@@ -62,6 +62,8 @@ namespace acpd {
         if(stable_patience<1||no_improve_patience<1||min_iterations<1) throw std::invalid_argument("stopping counts must be positive");
         if(!std::isfinite(improvement_relative)||improvement_relative<0||!std::isfinite(rebound_relative)||rebound_relative<0)
         throw std::invalid_argument("relative stopping thresholds must be finite and nonnegative");
+        if(!std::isfinite(divergence_radius)||divergence_radius<=1)
+        throw std::invalid_argument("divergence_radius must be finite and greater than one");
     }
     void Options::validate() const {
         name(method);

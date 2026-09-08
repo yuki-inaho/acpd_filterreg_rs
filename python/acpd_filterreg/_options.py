@@ -45,6 +45,7 @@ class AnalyticOptions:
     min_iterations: int = 6
     improvement_relative: float = 1e-6
     rebound_relative: float = 1e-3
+    divergence_radius: float = 100.0
 
     def __post_init__(self) -> None:
         _common(self)
@@ -59,6 +60,8 @@ class AnalyticOptions:
             v.integer(name, getattr(self, name), 1, 100000)
         v.real("improvement_relative", self.improvement_relative, positive=False)
         v.real("rebound_relative", self.rebound_relative, positive=False)
+        if v.real("divergence_radius", self.divergence_radius) <= 1:
+            raise ValueError("divergence_radius must be greater than one")
 
 
 def _common(option: FilterRegOptions | AnalyticOptions) -> None:

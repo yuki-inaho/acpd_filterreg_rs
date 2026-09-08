@@ -1,9 +1,9 @@
 //! Two-stage registration. The rigid pose is frozen before the analytic stage.
 use crate::analytic::{
-    degree_schedule, exponents, fit_analytic
+    degree_schedule, exponents, fit_analytic, Fit
 };
 use crate::gaussian::{
-    initial_variance, moment_values, posterior_statistics, variance_from_statistics
+    initial_variance, moment_values, posterior_statistics, variance_from_statistics, Statistics
 };
 use crate::lattice::FixedNoBlurLattice;
 use crate::rigid::fit_rigid;
@@ -162,23 +162,54 @@ target_normals: Option<&Matrix>,
             }
             next
         }
+        // Dimensionless: the fixed cloud is normalized to unit RMS radius, and the limit
+        // tracks its own largest radius so an outlier-heavy cloud is not penalised.
+        let divergence_limit = opt.divergence_radius
+        *x.row_iter().map(|r| r.norm()).fold(1.0_f64,f64::max);
         let mut cursor = 0usize;
         let mut it = 0usize;
         while it < opt.max_iterations && cursor < schedule.len() {
             let raw_degree = schedule[cursor];
-            let stats = posterior_statistics(&x,&y,sigma2,opt.w,false,Backend::Direct,None,None)?;
-            let active = stats.rho.iter().filter(|&&v| v>opt.min_mass).count();
-            if stats.mass <= opt.min_mass || active < exponents(d,opt.min_degree)?.len() {
-                analytic_stage.stop_reason = "insufficient_posterior_mass".into();
+            let attempt = (|| -> RegResult<Option<(Statistics,Fit,f64)>> {
+                let stats = posterior_statistics(&x,&y,sigma2,opt.w,false,Backend::Direct,None,None)?;
+                let active = stats.rho.iter().filter(|&&v| v>opt.min_mass).count();
+                if stats.mass <= opt.min_mass || active < exponents(d,opt.min_degree)?.len() {
+                    return Ok(None);
+                }
+                let fit = fit_analytic(&y,&stats,raw_degree,opt)?;
+                let next_sigma = variance_from_statistics(&fit.next,&stats,opt.min_sigma2)?;
+                Ok(Some((stats,fit,next_sigma)))
+            })();
+            let (stats,fit,next_sigma) = match attempt {
+                Ok(Some(value)) => value,
+                Ok(None) => {
+                    analytic_stage.stop_reason = "insufficient_posterior_mass".into();
+                    break;
+                }
+                // The analytic map is unregularized by design, so an ill-posed pair can drive
+                // the Taylor basis or the second-moment residual out of range. Report it as a
+                // stop reason and return the best state that was actually evaluated; never a
+                // silently substituted or re-tuned computation. A failure before any iteration
+                // succeeded is a genuine input error and still propagates.
+                Err(Error::Numerical(_)) if !analytic_stage.history.is_empty() => {
+                    analytic_stage.stop_reason = "numerical_divergence".into();
+                    break;
+                }
+                Err(error) => return Err(error),
+            };
+            if fit.next.row_iter().map(|r| r.norm()).fold(0.0_f64,f64::max) > divergence_limit {
+                // The analytic map is a global polynomial constrained only where the posterior
+                // supports it. Once a point loses support it can be extrapolated arbitrarily
+                // far, and the rho-weighted variance cannot see it, so a diverging state could
+                // otherwise be recorded as best. Refuse the iterate; the fit is left as computed.
+                analytic_stage.stop_reason = "numerical_divergence".into();
                 break;
             }
-            let fit = fit_analytic(&y,&stats,raw_degree,opt)?;
             if previous_degree.is_some_and(|degree| degree != fit.step.degree) {
                 stable = 0;
                 no_improve = 0;
             }
             previous_degree = Some(fit.step.degree);
-            let next_sigma = variance_from_statistics(&fit.next,&stats,opt.min_sigma2)?;
             let score = (d as f64*next_sigma).sqrt();
             let delta_y = (&fit.next-&y).norm()/(y.norm()+1e-12);
             let delta_sigma = (next_sigma-sigma2).abs()/(sigma2.abs()+1e-12);

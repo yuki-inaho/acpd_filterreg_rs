@@ -68,7 +68,7 @@ int main() {
             auto& b=o.analytic;
             std::cin>>b.max_iterations>>b.tolerance>>b.w>>b.sigma2>>b.min_sigma2>>b.min_degree>>b.max_degree
                 >>b.rank_tolerance>>b.min_mass>>b.initialization>>b.stable_patience>>b.no_improve_patience
-                >>b.min_iterations>>b.improvement_relative>>b.rebound_relative;
+                >>b.min_iterations>>b.improvement_relative>>b.rebound_relative>>b.divergence_radius;
             Matrix x=read_matrix(n,d),y=read_matrix(m,d),r=read_matrix(d,d);
             Vector t=read_matrix(d,1);Matrix normals=read_matrix(nn,d);
             result(registration(x,y,o,r,t,normals));

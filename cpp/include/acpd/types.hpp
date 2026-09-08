@@ -61,6 +61,10 @@ namespace acpd {
         // source iter>=5, with zero-based source indexing
         double improvement_relative = 1e-6;
         double rebound_relative = 1e-3;
+        double divergence_radius = 100.0;
+        // Multiple of the fixed cloud's radius beyond which an iterate is refused.
+        // A stopping rule only: accepted fits are the paper's unregularized solution,
+        // never clipped, damped or penalised. Healthy runs stay within 1.9x.
         void validate() const;
     };
     struct Options {

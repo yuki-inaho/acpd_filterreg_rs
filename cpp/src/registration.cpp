@@ -110,6 +110,10 @@ namespace acpd {
             // max_degree advances the continuation instead of ending the whole stage;
             // only the highest scheduled degree may terminate it. See
             // docs/SOURCE_DIFFERENCES.md, Analytic-CPD 10.
+            // Dimensionless: the fixed cloud is normalized to unit RMS radius, and the
+            // limit tracks its own largest radius so an outlier-heavy cloud is not
+            // penalised. See the divergence_radius note in types.hpp.
+            const double divergence_limit=opt.divergence_radius*std::max(1.0,x.rowwise().norm().maxCoeff());
             std::size_t cursor=0;
             const auto advance_degree=[&schedule](std::size_t at)->std::size_t {
                 const int degree=schedule[at];
@@ -117,70 +121,92 @@ namespace acpd {
                 return at;
             };
             for(int it=0;it<opt.max_iterations&&cursor<schedule.size();++it,++cursor) {
-                const Statistics stats=posterior_statistics(x,y,sigma2,opt.w,false,Backend::Direct);
-                int active=0;
-                for(int i=0;i<stats.rho.size();++i) if(stats.rho[i]>opt.min_mass) ++active;
-                if(stats.mass<=opt.min_mass||active<static_cast<int>(exponents(d,opt.min_degree).size())) {
-                    stage.stop_reason="insufficient_posterior_mass";
-                    break;
-                }
-                const Fit fit=fit_analytic(y,stats,schedule[cursor],opt);
-                if(previous_degree>=0&&previous_degree!=fit.step.degree) {
-                    stable=0;
-                    no_improve=0;
-                }
-                previous_degree=fit.step.degree;
-                const double next_sigma=variance_from_statistics(fit.next,stats,opt.min_sigma2),score=std::sqrt(d*next_sigma);
-                const double delta_y=(fit.next-y).norm()/(y.norm()+1e-12);
-                const double delta_sigma=std::abs(next_sigma-sigma2)/(std::abs(sigma2)+1e-12);
-                const double delta_score=std::abs(score-previous_score)/(std::abs(previous_score)+1e-12);
-                const double motion=motion_rms(y,fit.next);
-                const bool significant=best_score-score>std::max(1e-12,opt.improvement_relative*std::abs(best_score));
-                no_improve=significant?0:no_improve+1;
-                out.steps.push_back(fit.step);
-                y=fit.next;
-                sigma2=next_sigma;
-                stage.history.push_back({
-                    it+1,schedule[cursor],fit.step.degree,fit.active,fit.rank,sigma2,stats.nll,motion,fit.fit_rms,0,"direct"
-                });
-                // Fig.1: save the actual best state. Patience uses the source's
-                // significant-improvement threshold, but never loses a lower score.
-                if(score<best_score) {
-                    best_score=score;
-                    best_y=y;
-                    best_sigma=sigma2;
-                    best_steps=out.steps.size();
-                    stage.best_iteration=it+1;
-                }
-                stable=(delta_y<opt.tolerance&&delta_sigma<opt.tolerance&&delta_score<opt.tolerance)?stable+1:0;
-                previous_score=score;
-                if(score<opt.tolerance) {
-                    stage.converged=true;
-                    stage.stop_reason="residual_tolerance";
-                    break;
-                }
-                if(it+1>=opt.min_iterations) {
-                    const bool is_stable=stable>=opt.stable_patience;
-                    const bool is_rebound=no_improve>=opt.stable_patience&&score>best_score*(1+opt.rebound_relative)+1e-12;
-                    const bool is_stalled=no_improve>=opt.no_improve_patience;
-                    if(is_stable||is_rebound||is_stalled) {
-                        const std::size_t next=advance_degree(cursor);
-                        if(next<schedule.size()) {
-                            // Converged at this degree with higher degrees still scheduled:
-                            // continue the sequence rather than reporting the whole stage done.
-                            cursor=next-1;
-                            stable=0;
-                            no_improve=0;
-                            previous_degree=-1;
-                            continue;
-                        }
-                        if(is_stable) {
-                            stage.converged=true;
-                            stage.stop_reason="stable_tolerance";
-                        }
-                        else stage.stop_reason=is_rebound?"internal_rebound":"no_improvement";
+                try {
+                    const Statistics stats=posterior_statistics(x,y,sigma2,opt.w,false,Backend::Direct);
+                    int active=0;
+                    for(int i=0;i<stats.rho.size();++i) if(stats.rho[i]>opt.min_mass) ++active;
+                    if(stats.mass<=opt.min_mass||active<static_cast<int>(exponents(d,opt.min_degree).size())) {
+                        stage.stop_reason="insufficient_posterior_mass";
                         break;
                     }
+                    const Fit fit=fit_analytic(y,stats,schedule[cursor],opt);
+                    if(fit.next.rowwise().norm().maxCoeff()>divergence_limit) {
+                        // The analytic map is a global polynomial constrained only where the
+                        // posterior supports it. Once a point loses support it can be
+                        // extrapolated arbitrarily far, and the rho-weighted variance cannot
+                        // see it, so a diverging state could otherwise be recorded as best.
+                        // Refuse the iterate; the fit itself is left exactly as computed.
+                        stage.stop_reason="numerical_divergence";
+                        break;
+                    }
+                    if(previous_degree>=0&&previous_degree!=fit.step.degree) {
+                        stable=0;
+                        no_improve=0;
+                    }
+                    previous_degree=fit.step.degree;
+                    const double next_sigma=variance_from_statistics(fit.next,stats,opt.min_sigma2),score=std::sqrt(d*next_sigma);
+                    const double delta_y=(fit.next-y).norm()/(y.norm()+1e-12);
+                    const double delta_sigma=std::abs(next_sigma-sigma2)/(std::abs(sigma2)+1e-12);
+                    const double delta_score=std::abs(score-previous_score)/(std::abs(previous_score)+1e-12);
+                    const double motion=motion_rms(y,fit.next);
+                    const bool significant=best_score-score>std::max(1e-12,opt.improvement_relative*std::abs(best_score));
+                    no_improve=significant?0:no_improve+1;
+                    out.steps.push_back(fit.step);
+                    y=fit.next;
+                    sigma2=next_sigma;
+                    stage.history.push_back({
+                        it+1,schedule[cursor],fit.step.degree,fit.active,fit.rank,sigma2,stats.nll,motion,fit.fit_rms,0,"direct"
+                    });
+                    // Fig.1: save the actual best state. Patience uses the source's
+                    // significant-improvement threshold, but never loses a lower score.
+                    if(score<best_score) {
+                        best_score=score;
+                        best_y=y;
+                        best_sigma=sigma2;
+                        best_steps=out.steps.size();
+                        stage.best_iteration=it+1;
+                    }
+                    stable=(delta_y<opt.tolerance&&delta_sigma<opt.tolerance&&delta_score<opt.tolerance)?stable+1:0;
+                    previous_score=score;
+                    if(score<opt.tolerance) {
+                        stage.converged=true;
+                        stage.stop_reason="residual_tolerance";
+                        break;
+                    }
+                    if(it+1>=opt.min_iterations) {
+                        const bool is_stable=stable>=opt.stable_patience;
+                        const bool is_rebound=no_improve>=opt.stable_patience&&score>best_score*(1+opt.rebound_relative)+1e-12;
+                        const bool is_stalled=no_improve>=opt.no_improve_patience;
+                        if(is_stable||is_rebound||is_stalled) {
+                            const std::size_t next=advance_degree(cursor);
+                            if(next<schedule.size()) {
+                                // Converged at this degree with higher degrees still scheduled:
+                                // continue the sequence rather than reporting the whole stage done.
+                                cursor=next-1;
+                                stable=0;
+                                no_improve=0;
+                                previous_degree=-1;
+                                continue;
+                            }
+                            if(is_stable) {
+                                stage.converged=true;
+                                stage.stop_reason="stable_tolerance";
+                            }
+                            else stage.stop_reason=is_rebound?"internal_rebound":"no_improvement";
+                            break;
+                        }
+                    }
+                }
+                catch(const NumericalError&) {
+                    // The analytic map is unregularized by design, so an ill-posed pair can
+                    // drive the Taylor basis or the second-moment residual out of range. Report
+                    // it as a stop reason and return the best state that was actually
+                    // evaluated; never a silently substituted or re-tuned computation. A
+                    // failure before any iteration succeeded is a genuine input error and
+                    // still propagates.
+                    if(stage.history.empty()) throw;
+                    stage.stop_reason="numerical_divergence";
+                    break;
                 }
             }
             y=best_y;

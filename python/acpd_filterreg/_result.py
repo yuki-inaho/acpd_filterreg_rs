@@ -72,7 +72,8 @@ class StageResult:
         converged = v.boolean("stage converged", value["converged"])
         stop = value["stop_reason"]
         if stop not in ("not_run", "iteration_limit", "tolerance", "residual_tolerance",
-                        "stable_tolerance", "internal_rebound", "no_improvement", "insufficient_posterior_mass"):
+                        "stable_tolerance", "internal_rebound", "no_improvement",
+                        "insufficient_posterior_mass", "numerical_divergence"):
             raise ValueError("unknown saved stopping reason")
         best = v.integer("stage best iteration", value["best_iteration"], 0, len(rows))
         builds = v.integer("stage index builds", value["index_builds"], 0, 200000)
