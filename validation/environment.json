@@ -1,0 +1,94 @@
+{
+  "python": "3.13.5 (main, Jul 15 2026, 20:25:40) [GCC 14.2.0]",
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.41",
+  "executables": {
+    "c++": "/usr/bin/c++",
+    "cmake": "/usr/bin/cmake",
+    "ninja": "/usr/bin/ninja",
+    "rustc": null,
+    "cargo": null,
+    "pixi": null,
+    "xelatex": "/usr/bin/xelatex",
+    "tectonic": null
+  },
+  "python_modules": {
+    "numpy": true,
+    "pytest": true,
+    "nanobind": false,
+    "maturin": false,
+    "scikit_build_core": false
+  },
+  "attempts": [
+    {
+      "command": [
+        "cmake",
+        "-S",
+        "/mnt/data/acpd_filterreg_faithful/cpp",
+        "-B",
+        "/mnt/data/review_work/build-boundary",
+        "-DACPD_BUILD_PYTHON=ON",
+        "-DACPD_BUILD_TESTS=OFF",
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "started_unix": 1788795791.7357235,
+      "cwd": "/mnt/data/acpd_filterreg_faithful",
+      "returncode": 1,
+      "status": "BLOCKED",
+      "log": "nanobind_configure.log",
+      "elapsed_seconds": 6.399898290634155
+    },
+    {
+      "command": [
+        "pixi",
+        "install",
+        "-e",
+        "cpp"
+      ],
+      "started_unix": 1788795798.135648,
+      "cwd": "/mnt/data/acpd_filterreg_faithful",
+      "returncode": null,
+      "status": "BLOCKED",
+      "reason": "executable_not_found",
+      "log": "pixi_attempt.log",
+      "elapsed_seconds": 0.0004296302795410156
+    },
+    {
+      "command": [
+        "cargo",
+        "--version"
+      ],
+      "started_unix": 1788795798.1360862,
+      "cwd": "/mnt/data/acpd_filterreg_faithful",
+      "returncode": null,
+      "status": "BLOCKED",
+      "reason": "executable_not_found",
+      "log": "rust_attempt.log",
+      "elapsed_seconds": 0.00022745132446289062
+    },
+    {
+      "command": [
+        "/opt/pyvenv/bin/python",
+        "-m",
+        "pip",
+        "download",
+        "--no-deps",
+        "--only-binary=:all:",
+        "--retries",
+        "0",
+        "--timeout",
+        "10",
+        "--index-url",
+        "https://pypi.org/simple",
+        "--dest",
+        "/mnt/data/review_work/dependency-download",
+        "nanobind==2.12.0"
+      ],
+      "started_unix": 1788795798.13632,
+      "cwd": "/mnt/data/acpd_filterreg_faithful",
+      "returncode": 1,
+      "status": "BLOCKED",
+      "log": "nanobind_download.log",
+      "elapsed_seconds": 0.9688434600830078
+    }
+  ]
+}

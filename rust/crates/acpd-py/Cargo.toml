@@ -1,0 +1,14 @@
+[package]
+name = "acpd-py"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+[dependencies]
+acpd-core.workspace = true
+ndarray.workspace = true
+numpy.workspace = true
+pyo3 = { workspace = true, features = ["extension-module"] }

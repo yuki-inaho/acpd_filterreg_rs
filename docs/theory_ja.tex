@@ -1,0 +1,832 @@
+% !TeX program = xelatex
+% Self-contained source: no external images, bibliography database, or generated tables.
+\documentclass[a4paper,11pt]{article}
+\usepackage[margin=22mm,headheight=15pt]{geometry}
+\usepackage{fontspec,xeCJK}
+\setmainfont{lmroman10-regular.otf}[BoldFont=lmroman10-bold.otf,ItalicFont=lmroman10-italic.otf,BoldItalicFont=lmroman10-bolditalic.otf]
+\setsansfont{lmsans10-regular.otf}[BoldFont=lmsans10-bold.otf,ItalicFont=lmsans10-oblique.otf]
+\setmonofont[Scale=0.90]{lmmono10-regular.otf}
+\IfFontExistsTF{Noto Serif CJK JP}{\setCJKmainfont{Noto Serif CJK JP}}{\setCJKmainfont{Noto Sans CJK JP}}
+\setCJKsansfont{Noto Sans CJK JP}
+\setCJKmonofont{Noto Sans CJK JP}
+\XeTeXlinebreaklocale "ja"
+\XeTeXlinebreakskip=0pt plus 1pt
+\usepackage{amsmath,amssymb,bm,mathtools}
+\usepackage{array,booktabs,longtable,tabularx}
+\usepackage{enumitem,xurl,hyperref,fancyhdr}
+\hypersetup{unicode=true,colorlinks=true,linkcolor=black,urlcolor=black,citecolor=black,
+ pdftitle={FilterRegとAnalytic-CPD：原資料に基づく2次元・3次元実装仕様と検証},
+ pdfauthor={acpd-filterreg implementation review}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\renewcommand{\baselinestretch}{1.10}
+\setlength{\emergencystretch}{2em}
+\setlist{nosep,leftmargin=1.6em}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small FilterReg + Analytic-CPD / 2D・3D}
+\fancyhead[R]{\small 実装仕様 v0.2.0}
+\fancyfoot[C]{\thepage}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\SO}{\operatorname{SO}}
+\newcommand{\SE}{\operatorname{SE}}
+\newcommand{\diag}{\operatorname{Diag}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\argmin}{\operatorname*{arg\,min}}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\vct}[1]{\bm{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\setcounter{tocdepth}{1}
+\renewcommand{\contentsname}{目次}
+\renewcommand{\refname}{参考資料}
+\makeatletter
+\renewcommand*\l@section{\@dottedtocline{1}{0em}{2.5em}}
+\makeatother
+\numberwithin{equation}{section}
+
+\begin{document}
+\begin{titlepage}
+\vspace*{17mm}
+{\sffamily\Large 原論文・添付原実装に基づく是正仕様}\par
+\vspace{8mm}
+{\sffamily\bfseries\LARGE FilterReg と Analytic-CPD}\par
+\vspace{4mm}
+{\sffamily\Large 2次元・3次元の剛体位置合わせと\par 解析非剛体位置合わせ}\par
+\vspace{10mm}
+{\large C++ / nanobind および Rust / PyO3\par 独立数値核・共通Python操作・pixi環境}\par
+\vspace{13mm}
+\begin{tabularx}{\textwidth}{@{}p{29mm}Y@{}}
+\toprule
+文書の位置付け & 目的・要求・要件、定式化、実装選択、原コードとの差分、再実行可能な検証、完了条件の判定を一体で記述します。\\
+対象版 & \code{acpd-filterreg} 0.2.0。以前の\code{hybridreg}および\code{acpd_filterreg_suite}とは区別します。\\
+資料の基準 & ユーザー添付の論文2件と原コード4件です。遠隔リポジトリの最新版に置き換えていません。\\
+総合状態 & \textbf{DoD全項目の完了には未到達です。} 実nanobind接続のビルドとpixi依存解決が未達です。Rustのコンパイル必須のみ、ユーザーの先行指示により免除されています。\\
+\bottomrule
+\end{tabularx}
+\vfill
+\textbf{重要な区別}\par
+数式に対応するコードがあること、原コードの計算結果に近いこと、Python拡張をビルドできること、対象データで精度が改善することは別々の命題です。本書はこれらを同一視しません。特に、格子フィルタを全対評価や半径探索で代用した前回版は、今回の忠実性の基準を満たしていませんでした。
+\vspace{6mm}\par
+2026年9月8日改訂\hfill ソース配布・検証報告版
+\end{titlepage}
+\tableofcontents
+\clearpage
+
+\section{目的、要求、要件と受入範囲}
+\subsection{ユーザーの目的}
+目的は、点群間の未知対応を確率的に扱いながら、まず大域的な回転・並進を推定し、その後に滑らかな残差変形を解析写像で推定することです。元の\code{cpd3d_rs}のようにPythonから利用でき、同じ操作を2次元・3次元、C++・Rustの両方で使えるようにします。\cite{cpd3dsrc}
+
+今回の是正では「動けばよい別方式」ではなく、FilterRegのフィルタ型E-stepとtwist型M-step、Analytic-CPDのCPD事後・Taylor基底・無正則化重み付き当てはめ・逐次合成を識別可能な形で実装することを要求します。これらはそれぞれの論文の主要構成です。\cite{fr,acpd}
+
+\subsection{機能上の要件}
+\begin{tabularx}{\textwidth}{@{}p{24mm}Y@{}}
+\toprule
+モード & 定義\\\midrule
+\code{rigid} & FilterRegで\(R\in\SO(d),t\in\R^d\)を推定します。拡大縮小は推定しません。\\
+\code{analytic} & 与えられた初期姿勢にAnalytic-CPDの解析更新を合成します。FilterRegは実行しません。\\
+\code{nonrigid} & FilterRegを一度実行し、その最終姿勢を固定してAnalytic-CPDを開始します。解析段階から剛体段階へ戻りません。\\
+\bottomrule
+\end{tabularx}
+
+各モードは\(d=2,3\)を扱います。固定点と移動点の点数は異なってよく、同じ点数でも行番号による対応は仮定しません。剛体段階は点対点と、2Dの点対線・3Dの点対面を扱います。非剛体段階は論文の二乗ユークリッド距離による解析当てはめです。
+
+非機能要件は、数値核と言語接続の分離、入力・出力の所有権の明確化、設定の一貫性、再適用可能な変換の保存、例外処理、原資料から試験までの追跡性です。RustからC++へ処理を委譲すること、Pythonの代替計算へ黙って切り替えることは禁止します。
+
+\subsection{忠実性の意味と対象外}
+ここでの忠実性は、対象の数式・アルゴリズムに対応する処理と、その対応を確認する証拠を備えることです。原コードにある添字不整合や次元の固定値まで模倣することではありません。差分は第\ref{sec:differences}節で明記します。
+
+原論文のGPU、関節ロボット、変形グラフ、学習特徴による大域的初期化、全実データ実験および公表速度の再現は対象外です。2Dへの拡張は同じ確率式と\(\SE(2)\)の運動学から導出します。FilterReg原論文の全機能を再現したという意味ではありません。
+
+\section{記号、変換方向、座標系}\label{sec:notation}
+固定点群を\(X=\{x_n\}_{n=1}^N\subset\R^d\)、移動点群を\(Y=\{y_m\}_{m=1}^M\subset\R^d\)とします。変換方向は常に\(Y\to X\)です。本書はAnalytic-CPDの記号に統一しています。FilterReg原論文では\(X\)が移動側、\(Y\)が観測側であり、記号だけを転記すると方向が逆になる点に注意が必要です。\cite{fr,acpd}
+
+\begin{tabularx}{\textwidth}{@{}p{36mm}Y@{}}
+\toprule
+記号 & 意味\\\midrule
+\(p_m\) & 現在の移動点。初期移動点\(y_m\)と区別します。\\
+\(K_{mn}\) & \(\exp[-\norm{p_m-x_n}^2/(2\sigma^2)]\)。正規化係数を除いたガウス親和度です。\\
+\(P_{mn},Q_{mn}\) & CPD方向、FilterReg方向の事後責任度です。同じものではありません。\\
+\(\rho_m,b_m,h_m\) & 責任度の行和、固定座標の1次統計、固定座標の二乗ノルム統計です。\\
+\(z_m=b_m/\rho_m\) & \(\rho_m>0\)のときの事後重心です。\\
+\(q,S_{d,q}\) & Taylor最大総次数、総次数\(q\)以下の基底数です。\\
+\(\mathcal A_k,C_k\) & 反復\(k\)の解析写像、保存用の恒等写像との差の係数です。\\
+\(T_F,\mathcal N\) & 固定した剛体変換、共通の座標正規化です。\\
+\bottomrule
+\end{tabularx}
+
+数式の点は列ベクトルです。Python配列は1点を1行として保持し、剛体変換を\code{points @ rotation.T + translation}で評価します。回転行列を転置した値として保存することはありません。
+
+\subsection{共通正規化の明示的な定義}
+論文は共通の正規化座標と原点中心のTaylor展開を要求しますが、尺度の一意な計算式までは固定していません。本実装では以下を統合仕様として定義します。\cite{acpd}
+\begin{equation}
+ c_X=\frac1N\sum_n x_n,\qquad
+ s=\sqrt{\frac1N\sum_n\norm{x_n-c_X}^2},\qquad
+ \mathcal N(p)=\frac{p-c_X}{s}.
+\end{equation}
+両点群に同一の\(c_X,s\)を適用します。別々に中心を引いて相対並進を消すことはありません。\(s\)が非有限、ゼロまたは数値的に表現不能な場合は例外とします。正規化後の展開中心は\(c=0\)です。\(c_X\)は世界座標の中心、\(c\)はTaylor展開中心であり、区別します。
+
+明示指定の\code{sigma2}は入力座標の二乗単位です。数値核では\(\sigma^2/s^2\)へ変換します。一方\code{min_sigma2}は正規化座標の下限です。返却する分散と履歴のRMSは元の単位に戻します。負の対数尤度は正規化座標における診断値であり、異なる正規化を使う実行間の尺度不変な比較量ではありません。
+
+\section{CPD方向の確率モデルとE-step}\label{sec:cpd}
+現在の移動点を混合分布の中心とし、固定点を観測として扱います。論文の外れ値モデルを用いると、正規化座標における評価式は
+\begin{equation}
+ p(x_n)=\frac{w}{N}+\frac{1-w}{M}(2\pi\sigma^2)^{-d/2}
+          \sum_{m=1}^{M}K_{mn},\qquad 0\leq w<1
+\end{equation}
+です。ここからBayes則により
+\begin{align}
+ P_{mn}&=\frac{K_{mn}}{\sum_{j=1}^{M}K_{jn}+c_C},\\
+ c_C&=(2\pi\sigma^2)^{d/2}\frac{w}{1-w}\frac{M}{N}
+\end{align}
+を得ます。\(w=0\)では各列の和が1、\(w>0\)では1以下です。これがAnalytic-CPDで保持すべきCPDの事後層です。\cite[式(2)--(5)]{acpd}
+
+必要な統計量は
+\begin{equation}
+ \rho_m=\sum_nP_{mn},\quad b_m=\sum_nP_{mn}x_n,\quad
+ h_m=\sum_nP_{mn}\norm{x_n}^2,\quad N_P=\sum_m\rho_m
+\end{equation}
+です。\(b_m\)を行に並べた行列が\(PX\)です。\(h_m\)を保持すれば、分散更新のために列和を別途返却しなくても\(\sum_mh_m=\sum_n(P^T\mathbf1)_n\norm{x_n}^2\)を得られます。
+
+\subsection{直接計算と数値安定化}
+ACPDの既定・唯一の事後計算は全点対を評価する直接法です。大きな\(M\times N\)行列を保存せず、観測点ごとに責任度を正規化して統計量を加算します。論文付録A・B.4が述べる逐次集計と同じ式です。格子近似や半径打切りはACPDへ導入していません。\cite{acpd}
+
+分母の計算では\(\ell_m=-\norm{p_m-x_n}^2/(2\sigma^2)\)と\(\ell_c=\log c_C\)の最大値\(a\)を引き、
+\begin{equation}
+ P_{mn}=\frac{\exp(\ell_m-a)}{
+     \sum_j\exp(\ell_j-a)+\exp(\ell_c-a)}
+\end{equation}
+と評価します。\(w=0\)は\(\ell_c=-\infty\)として扱います。これは定式化の変更ではなく、同じ確率の数値評価です。距離自体のオーバーフローや、表現可能な支持がない場合には例外とします。
+
+\subsection{外れ値定数の解釈}
+論文で使われる\(w/N\)は指定した座標系に依存する背景項です。\(\R^d\)全体に積分して1になる一様分布ではありません。厳密な生成密度として解釈するには有限観測領域とその体積を別に定義する必要があります。本版は論文の登録用規約を維持し、背景体積を新しい推定変数として加えていません。したがって、\(w\)を物理的な外れ値率の校正済み推定値とみなしたり、正規化を変えて同じ尤度尺度と解釈したりしません。
+
+\section{FilterReg方向の確率モデルとモーメント}\label{sec:filterreg}
+FilterRegでは固定点群が混合分布の中心で、移動点をその分布の高い位置へ移動させます。CPDとは条件付けの方向が逆です。\cite[§3.1--3.2]{fr}
+\begin{align}
+ p(p_m\mid X)&=\frac wM+\frac{1-w}{N}(2\pi\sigma^2)^{-d/2}\sum_nK_{mn},\\
+ Q_{mn}&=\frac{K_{mn}}{\sum_jK_{mj}+c_F},\qquad
+ c_F=(2\pi\sigma^2)^{d/2}\frac w{1-w}\frac NM.
+\end{align}
+
+正規化係数を除いたガウス和を
+\begin{align}
+ m_{0m}&=\sum_n K_{mn},&
+ m_{1m}&=\sum_n K_{mn}x_n,&
+ m_{2m}&=\sum_n K_{mn}\norm{x_n}^2
+\end{align}
+とすると、
+\begin{equation}
+ \rho_m=\frac{m_{0m}}{m_{0m}+c_F},\quad
+ z_m=\frac{m_{1m}}{m_{0m}},\quad
+ b_m=\frac{m_{1m}}{m_{0m}+c_F},\quad
+ h_m=\frac{m_{2m}}{m_{0m}+c_F}
+\end{equation}
+です。\(b_m=\rho_mz_m\)なので、両手法のM-stepは同じ統計の型を使えます。しかしE-stepの正規化は共通化しません。CPDでFilterRegの行正規化を使うと別のモデルになります。
+
+原論文の式(6)では正規化済みGaussian PDFを使い、そのとき\(c=\frac w{1-w}\frac NM\)です。本書ではフィルタに渡す値が非正規化の\(K\)なので、\((2\pi\sigma^2)^{d/2}\)を外れ値定数側に移しています。\cite{fr}
+
+\subsection{法線統計と支持がない点}
+固定点の単位法線を\(n_n\)とし、
+\begin{equation}
+ m_{nm}=\sum_nK_{mn}n_n,\qquad \bar n_m=m_{nm}/m_{0m}
+\end{equation}
+を計算します。論文式(9)どおりの重み付き平均です。平均後に勝手に単位長へ再正規化しません。向きの異なる法線が相殺して\(\norm{\bar n_m}\)が小さい場合、その点の平面拘束も弱くなります。
+
+格子近似では、クエリ点に観測側の支持が存在せず\(m_{0m}=0\)となることがあります。この行の責任度を0とし、直接法へ切り替えません。\(w=0\)の場合、その点の対数尤度は\(-\infty\)であり、返却する診断値では非有限の負の対数尤度を\code{None}にします。有効な拘束が不足すれば剛体更新は例外になります。
+
+\section{事後重心への集約と分散更新の導出}\label{sec:variance}
+以下はCPDの\(P\)、FilterRegの\(Q\)のいずれにも適用できる代数です。責任度を一般に\(W_{mn}\geq0\)とし、\(\rho_m=\sum_nW_{mn}>0\)、\(z_m=\sum_nW_{mn}x_n/\rho_m\)とします。
+\begin{align}
+ \sum_nW_{mn}\norm{x_n-u_m}^2
+ &=\rho_m\norm{z_m-u_m}^2
+   +\sum_nW_{mn}\norm{x_n-z_m}^2.\label{eq:bary}
+\end{align}
+\(x_n-u_m=(x_n-z_m)+(z_m-u_m)\)と展開すると、交差項は
+\(\sum_nW_{mn}(x_n-z_m)=0\)によって消えます。右辺第2項は変換\(u_m\)に依存しないため、変換の推定に関して集約は厳密です。近傍代表点への経験的な置換ではありません。\cite[§3.3]{acpd}
+
+\subsection{同じ事後を固定した分散更新}
+M-step後の移動点を\(p_m^+\)とし、E-stepで得た責任度を固定します。分散に関係する目的は
+\begin{equation}
+ \mathcal Q(v)=\frac{E}{2v}+\frac{dN_P}{2}\log v,
+ \quad E=\sum_{m,n}W_{mn}\norm{x_n-p_m^+}^2,
+ \quad v=\sigma^2>0
+\end{equation}
+です。\(\partial\mathcal Q/\partial v=-E/(2v^2)+dN_P/(2v)\)なので、
+\begin{equation}
+ \sigma_+^2=\frac{E}{dN_P}
+ =\frac{\sum_m\left(h_m-2(p_m^+)^Tb_m+\rho_m\norm{p_m^+}^2\right)}{dN_P}.\label{eq:variance}
+\end{equation}
+必ず\textbf{更新後の座標}と\textbf{実際の次元\(d\)}を使います。重心までの距離\(\rho_m\norm{z_m-p_m^+}^2\)だけでは、式\eqref{eq:bary}の定数項が欠けて分散を過小評価します。\cite[式(25)--(27)]{acpd}
+
+実装では非有限値や大きな負の二乗残差を例外とします。丸め誤差の範囲内の微小な負値は0へ戻し、正の分散下限を適用します。この下限は数値的な制約であり、無制約最大尤度解と区別します。点対線・面の剛体目的を使う場合も、分散は空間Gaussianに対する上式で更新します。
+
+\subsection{初期分散}
+CPD式の初期分散は
+\begin{equation}
+ \sigma_0^2=\frac{1}{dMN}\sum_{m,n}\norm{x_n-p_m}^2
+ =\frac{v_X+v_P+\norm{\mu_X-\mu_P}^2}{d},
+\end{equation}
+ここで\(v_X=N^{-1}\sum_n\norm{x_n-\mu_X}^2\)、\(v_P=M^{-1}\sum_m\norm{p_m-\mu_P}^2\)です。右辺は同じ全対平均を\(O((N+M)d)\)で計算し、大きな共通オフセットによる桁落ちを抑えます。
+
+\section{ガウス和をフィルタに変換する入力拡張}\label{sec:augmentation}
+一般のガウス和は、観測特徴\(f_n\)、クエリ特徴\(g_m\)、観測値\(v_n\in\R^C\)に対して
+\begin{equation}
+ G(g_m)=\sum_n\exp[-\norm{g_m-f_n}^2/2]v_n
+\end{equation}
+です。位置のみを使う本版では\(f_n=x_n/\sigma\)、\(g_m=p_m/\sigma\)です。異なる点集合の値を求めるために、FilterReg式(13)の拡張を行います。\(G_P=(g_m^T)_m\)、\(F_X=(f_n^T)_n\)と定義します。\cite{fr}
+\begin{equation}
+ F=\begin{bmatrix}G_P\\F_X\end{bmatrix},\qquad
+ V=\begin{bmatrix}0\\V_X\end{bmatrix},\qquad
+ (V_X)_n=(1,x_n^T,\norm{x_n}^2,n_n^T).
+\end{equation}
+法線を使わないときは最後の\(d\)成分を省きます。値の次元\(C\)は\(d+2\)または\(2d+2\)です。クエリ側を0にするため、拡張集合上のフィルタ結果の先頭\(M\)行には観測側からの寄与だけが残ります。
+
+1回の格子構築と多チャンネルの処理で、0次・1次・2次・法線モーメントをまとめて得ます。モーメントごとに異なる近傍探索を行って統計の整合性を失うことは避けます。低水準操作の\code{start}は、どの行からSplatするかを指定します。登録時は\(\code{start}=M\)とし、クエリ側の値も明示的に0とします。
+
+\subsection{前回の置換が不適合だった理由}
+全対評価はこのガウス和を直接計算できますが、permutohedral格子への埋込み、単体の重心座標、格子上の拡散を実装したことにはなりません。半径探索も同様です。「同じ種類のガウス和を計算する」という共通点だけでは、FilterRegの主要な計算構成を再現したという要件を満たせません。
+
+今回の\code{direct}は独立した診断用の選択肢として残しますが、FilterRegの既定は本物の格子法です。ACPDの直接E-stepとは目的も選択位置も異なります。
+
+\section{Permutohedral格子：埋込みと単体補間}\label{sec:simplex}
+\subsection{次元と埋込み}
+以下は添付probregの格子コードと原FilterRegの補助関数に対応する具体化です。\cite{probregsrc,frsrc} 特徴次元を\(D\)とし、\(D+1\)次元の総和0の超平面へ埋め込みます。登録では\(D=d\)、低水準フィルタ単体では\(1\leq D\leq16\)を許します。
+
+Blurの有無に応じて
+\begin{equation}
+ \gamma_B=(D+1)\sqrt{2/3},\qquad
+ \gamma_0=(D+1)\sqrt{1/6}
+\end{equation}
+を使います。入力\(f\in\R^D\)に対して\(a_j=\gamma f_j/\sqrt{j(j+1)}\)、\(j=1,\ldots,D\)と置き、
+\begin{equation}
+ e_0=\sum_{j=1}^Da_j,\qquad
+ e_i=\sum_{j=i+1}^Da_j-i a_i\quad (i=1,\ldots,D)
+\end{equation}
+とします。\(\sum_{i=0}^De_i=0\)です。Blurを省く場合は尺度も変える必要があり、同じ尺度でBlurだけを削除する実装とは異なります。
+
+\subsection{最近格子点、順位、重心座標}
+\(h=D+1\)とします。各\(e_i\)を最も近い\(h\)の整数倍\(r_i\)へ丸めます。同距離のときは下側を選びます。残差\(e_i-r_i\)の降順の順位\(k_i\)を求め、\(q=\sum_i r_i/h\)を各順位に加えます。順位が\([0,D]\)から外れた成分について\(h\)だけ巻き戻し、対応する\(r_i\)も\(\pm h\)補正します。等しい残差は添付スカラー実装の添字順で処理します。
+
+\(D+2\)成分の作業ベクトル\(b\)を0にし、各\(i\)について
+\begin{equation}
+ \delta_i=(e_i-r_i)/h,\quad
+ b_{D-k_i}\mathrel{+}=\delta_i,\quad
+ b_{D-k_i+1}\mathrel{-}=\delta_i
+\end{equation}
+を行い、最後に\(b_0\mathrel{+}=1+b_{D+1}\)とします。先頭\(D+1\)成分が単体の重心重み\(\beta_j\)です。
+
+単体の色\(j=0,\ldots,D\)に対応する頂点キーは、独立な最初の\(D\)座標について
+\begin{equation}
+ \kappa_{j,i}=r_i+j-h\,\mathbf1\{k_i>D-j\},\qquad i=0,\ldots,D-1
+\end{equation}
+です。最後の座標は総和0から復元可能なので保存しません。特に長さ\(D\)のキーから\(\kappa_D\)を読むことは禁止します。
+
+\subsection{数値表現と限界}
+本版は倍精度と64ビット整数キーを使い、埋込み座標が\(2^{46}\)を超える場合に整数変換前に拒否します。非有限の重みや許容を超える負の重みも拒否します。添付版の単精度・短整数と比べ、丸め境界付近で異なる単体が選ばれる可能性はあります。全入力に対するビット一致や、ガウス近似の一様誤差上限を主張しません。
+
+\section{Splat・Blur・Sliceと原コードの最適化}\label{sec:lattice}
+\subsection{標準の三段階}
+点\(i\)が頂点\(\kappa_{ij}\)、重み\(\beta_{ij}\)を持つとき、Splatは
+\begin{equation}
+ L(\kappa)=\sum_{i,j:\,\kappa_{ij}=\kappa}\beta_{ij}v_i
+\end{equation}
+です。各点の値をその単体の\(D+1\)頂点へ線形に分配します。
+
+Blurは軸\(a=0,\ldots,D\)ごとに、存在する格子頂点の値を
+\begin{equation}
+ L^{a+1}(\kappa)=L^a(\kappa)+\tfrac12L^a(\kappa_a^-)
+                                  +\tfrac12L^a(\kappa_a^+)
+\end{equation}
+へ更新します。未登録の隣接頂点の値は0とします。各軸では別の作業領域へ書き、同じ軸内の走査順に結果を依存させません。独立キーでは全成分を\(\mp1\)とした後、\(a<D\)の場合に軸成分だけ\(\pm D\)へ置き換えることで隣接キーを得ます。最後の軸は独立キーの範囲外を読みません。
+
+Sliceは
+\begin{equation}
+ \widetilde G_i=\eta_D\sum_{j=0}^{D}\beta_{ij}L^{D+1}(\kappa_{ij}),
+ \qquad \eta_D=\frac{1}{1+2^{-D}}
+\end{equation}
+です。添付probregの利得を保持します。逆順のBlurも低水準操作として用意し、原コードと比較します。有限の登録頂点集合で軸演算が常に可換とは仮定しません。
+
+\subsection{三つの格子方式を混同しない}
+\begin{tabularx}{\textwidth}{@{}p{43mm}Y@{}}
+\toprule
+方式 & 構成と由来\\\midrule
+\code{permutohedral} & 拡張点群\([P;X]\)、\(\gamma_B\)、全軸Blur、\(\eta_D\)。標準の実格子法で、本版FilterRegの既定です。\\
+\code{permutohedral_noblur} & 原FilterRegに対応する観測専用構築です。\(X\)のみを\(\gamma_0\)でSplatし、\(P\)はSliceだけ行います。Blurも\(\eta_D\)も適用しません。\\
+\code{probreg} & 拡張点群の標準格子を調べ、頂点数が\(0.015N\)を超えると\(\gamma_0\)で再構築してBlurを省きます。添付probregと同じく\(\eta_D\)は保持します。\\
+\bottomrule
+\end{tabularx}
+
+\textbf{原FilterRegのBlur省略版も、本物のpermutohedral格子です。} 半径探索ではありません。観測専用版では\(X\)、値、\(\sigma^2\)が固定ならSplat済み格子を再利用でき、移動点の更新に応じてSliceだけやり直します。分散を更新した場合は特徴尺度が変わるので再構築します。再構築回数は履歴に記録します。
+
+probreg方式の自動切替は「格子から半径法への切替」ではなく、二種類の格子近似間の切替です。添付原FilterRegの\code{updatedvar_withblur.h}は実質的に空であり、そのファイルを完全移植したと称してはいません。標準Blurの具体的な参照は添付probregです。\cite{probregsrc,frsrc}
+
+\section{剛体M-step：twistと局所更新}\label{sec:twist}
+\subsection{点対点目的}
+事後を固定して、現在の移動点\(p_m\)を剛体増分で更新します。共通の\(1/(2\sigma^2)\)を除く目的は
+\begin{equation}
+ E(R_\Delta,t_\Delta)=\sum_m\rho_m
+      \norm{R_\Delta p_m+t_\Delta-z_m}^2.
+\end{equation}
+正規化前後で回転は同じで、並進のみ尺度が変わります。M-stepの間に事後を再計算しません。
+
+2Dの増分を\(\xi=(\omega,v_x,v_y)\)とし、3Dでは\(\xi=(\omega_x,\omega_y,\omega_z,v_x,v_y,v_z)\)とします。左から増分を作用させると、零増分での点のヤコビアンは
+\begin{align}
+ J_{2}(p)&=\begin{bmatrix}-p_y&1&0\\p_x&0&1\end{bmatrix},\\
+ J_{3}(p)&=\begin{bmatrix}-[p]_\times&I_3\end{bmatrix},\qquad
+ [p]_\times b=p\times b.
+\end{align}
+\(\omega\times p=-p\times\omega\)なので回転部分の符号は負です。原論文のskew説明と式(16)を混同せず、原コードと変換の有限差分で確認します。\cite[§5]{fr}
+
+\subsection{小さな正規方程式}
+残差を\(r_m=p_m-z_m\)とし、Gauss--Newtonの行列と右辺を
+\begin{equation}
+ H=\sum_m\rho_mJ_d(p_m)^TJ_d(p_m),\qquad
+ g=\sum_m\rho_mJ_d(p_m)^Tr_m
+\end{equation}
+として、\(H\Delta\xi=-g\)を解きます。\(H\)は2Dで\(3\times3\)、3Dで\(6\times6\)です。点数に比例する大きな設計行列を保持する必要はありません。これは原論文式(18)の大域剛体への特殊化です。
+
+逆行列を明示形成せず、特異値分解で解きます。必要な階数がない場合は、拘束不足として例外にします。独自の剛体正則化や、欠落した回転軸を0に固定して成功扱いにする処理は入れません。内側反復数の既定は1です。増やした場合も同じ事後を固定して局所線形化を更新します。
+
+\subsection{回転の有限更新と合成}
+2Dは\(R_\Delta=\bigl[\begin{smallmatrix}\cos\omega&-\sin\omega\\\sin\omega&\cos\omega\end{smallmatrix}\bigr]\)、3DはRodrigues式
+\begin{equation}
+ R_\Delta=I+\frac{\sin\theta}{\theta}[\omega]_\times+
+       \frac{1-\cos\theta}{\theta^2}[\omega]_\times^2,
+ \qquad \theta=\norm{\omega}
+\end{equation}
+を使います。\(\theta\)が小さいときは係数を級数で評価します。\(t_\Delta=v\)として、
+\begin{equation}
+ R^+=R_\Delta R,\qquad t^+=R_\Delta t+t_\Delta
+\end{equation}
+を適用します。これは原コードに対応する回転ベクトルと独立並進の局所更新です。\(\SE(3)\)の完全な指数写像の並進\(V(\omega)v\)を使う更新とは区別します。一次微分は同じでも有限増分は一般に異なります。
+
+\section{点対線・点対面と任意の閉形式解}\label{sec:plane}
+2Dでは法線を持つ局所直線、3Dでは局所平面までの残差を使えます。E-stepで平均した法線\(\bar n_m\)を固定すると、
+\begin{equation}
+ e_m=\bar n_m^T(p_m-z_m),\qquad j_m=\bar n_m^TJ_d(p_m),\qquad
+ E_\perp=\sum_m\rho_me_m^2
+\end{equation}
+です。正規方程式は
+\begin{equation}
+ H_\perp=\sum_m\rho_mj_m^Tj_m,\qquad
+ g_\perp=\sum_m\rho_mj_m^Te_m
+\end{equation}
+になります。これはFilterReg式(9),(10)の2D/3D実装です。単一平面など、運動の一部を拘束できない配置では階数不足を検出します。\cite{fr}
+
+入力法線は固定点群と同じ行数・次元の単位ベクトルでなければなりません。共通正規化は並進と等方尺度だけなので法線の方向は変えません。法線推定自体は本版の登録処理に含めません。
+
+\subsection{任意のKabsch解}
+点対点のみ、\code{solver="kabsch"}で閉形式の重み付き剛体解を選べます。これはtwistを実装しないための代用品ではなく、別のM-step解法として明示します。
+\begin{align}
+ \mu_p&=\frac{\sum_m\rho_mp_m}{\sum_m\rho_m},&
+ \mu_z&=\frac{\sum_m\rho_mz_m}{\sum_m\rho_m},\\
+ B&=\sum_m\rho_m(p_m-\mu_p)(z_m-\mu_z)^T=U\Sigma V^T,\\
+ R_\Delta&=V\diag(1,\ldots,\det(VU^T))U^T,&
+ t_\Delta&=\mu_z-R_\Delta\mu_p.
+\end{align}
+重心と相互共分散で同じ責任度を用います。\(\sqrt{\rho}\)を行の最小二乗重みに使うことと、重心計算の重みを\(\sqrt{\rho}\)に変えることは異なります。添付probregの該当箇所との違いを第\ref{sec:differences}節に記録しています。
+
+\section{Analytic-CPDの構造化Taylor写像}\label{sec:taylor}
+\subsection{有限次元の解析関数空間}
+多重指数\(\alpha=(\alpha_1,\ldots,\alpha_d)\)、\(|\alpha|=\sum_j\alpha_j\)、\(\alpha!=\prod_j\alpha_j!\)を使い、
+\begin{equation}
+ \phi_q(p;c)=\left[\frac{(p-c)^\alpha}{\alpha!}\right]_{|\alpha|\leq q},\qquad
+ \mathcal A(p)=B^T\phi_q(p;c),\qquad B\in\R^{S_{d,q}\times d}
+\end{equation}
+と定義します。基底数と係数数は
+\begin{equation}
+ S_{d,q}=\binom{q+d}{d},\qquad K_{d,q}=dS_{d,q}.
+\end{equation}
+\(q=10\)で2Dは66基底・132係数、3Dは286基底・858係数です。変形係数の数は点数に依存しません。ただし、E-stepや当てはめ行列の行数は依然として点数に依存します。\cite[§3.4、付録A]{acpd}
+
+本版では正規化後の\(c=0\)を固定し、全総次数を昇順で列挙します。同じ次数では第1変数の指数を降順、3Dでは次に第2変数の指数を降順とします。基底評価、推定係数、保存、再適用、微分でこの順序を一致させます。
+
+2Dの2次基底は
+\begin{equation}
+ \phi_2(u)=\left(1,u_1,u_2,\frac{u_1^2}{2},u_1u_2,\frac{u_2^2}{2}\right)^T
+\end{equation}
+です。3Dでは2次部分が\((u_1^2/2,u_1u_2,u_1u_3,u_2^2/2,u_2u_3,u_3^2/2)\)になります。階乗を基底側に含めるため、係数は微分値型の規約になります。
+
+\subsection{剛体成分との関係}
+1次までの写像は一般のアフィン写像を含みます。定数項と一次項を削除すると、論文の解析関数空間とは異なる制約付きモデルになります。本版はこれらを削除せず、残差を剛体変位場へ直交投影する制約も既定で加えません。
+
+したがって、剛体段階を固定しても、後続の解析写像には残った並進、回転に似た成分、伸縮、せん断が含まれ得ます。「剛体変数を再推定しない」ことは保証しますが、「有限剛体運動と非剛体運動を一意に分解する」ことは保証しません。この区別が、ユーザー指定の初期姿勢固定と論文の写像空間を両立する仕様です。
+
+\section{無正則化の重み付き解析M-step}\label{sec:fit}
+現在の点群\(Y_{\rm cur}=(p_m^T)_m\)、事後重心\(Z=(z_m^T)_m\)、責任度\(\rho_m\)から、\(I=\{m:\rho_m>\varepsilon_\rho\}\)を作ります。選択行だけの設計行列を\(\Phi\)、重み行列を\(\Omega=\diag(\rho_m)_{m\in I}\)とすると、
+\begin{equation}
+ B^*=\argmin_B\norm{\Omega^{1/2}(\Phi B-Z)}_F^2.\label{eq:fit}
+\end{equation}
+これは論文式(20),(22)です。\textbf{リッジ正則化、最大変位制限、係数射影、更新の減衰は加えません。}\cite{acpd}
+
+\(D_w=\Omega^{1/2}\Phi\)、\(Z_w=\Omega^{1/2}Z\)と置き、\(D_w=U\Sigma V^T\)を特異値分解して
+\begin{equation}
+ B^*=V\Sigma_\tau^{\dagger}U^TZ_w
+\end{equation}
+を計算します。\(\Sigma_\tau^{\dagger}\)は\(s_i>\tau s_{\max}\)の特異値だけを逆数にする数値的擬似逆です。\(\tau=10^{-12}\)が既定で、実際の階数を履歴に記録します。厳密演算で列フルランクなら唯一の最小二乗解、階数不足なら絶対写像の最小ノルム解です。
+
+正規方程式\((\Phi^T\Omega\Phi)B=\Phi^T\Omega Z\)は導出上有用ですが、高次数で条件数を二乗するため実装では明示形成しません。SVDは論文§3.5と付録B.7が認める安定な解法です。全出力座標で同じ分解を共有し、座標ごとに同じ行列を分解し直しません。
+
+\subsection{保存する残差係数と、解く目的の区別}
+恒等写像を表す係数を\(B_I\)とすると、\(\Phi B_I=(Y_{\rm cur})_I\)です。解いた後で\(C=B^*-B_I\)を保存し、
+\begin{equation}
+ \mathcal A(p)=p+C^T\phi_q(p)
+\end{equation}
+と再適用します。保存表現が残差であるだけで、解く問題は式\eqref{eq:fit}の絶対写像です。階数不足で最初から最小ノルムの残差係数を解くと、恒等写像に偏った別の解を選ぶことがあるため、その置換はしません。
+
+有効行が少ない場合は、第\ref{sec:schedule}節の規則で次数を減らします。最小次数でも行数が足りない場合、上位の反復処理はそれ以前の最良状態を返し、\code{insufficient_posterior_mass}を記録します。低水準の当てはめ関数へ直接不適合なデータを渡した場合は例外です。
+
+\section{次数継続：原コードの剰余割当まで定義}\label{sec:schedule}
+既定の最大次数\(q_{\max}=10\)、反復予算\(T=55\)、外れ値重み\(w=0.1\)は論文の標準設定です。低次数の段階を長く、高次数の段階を短く割り当てます。\cite[§3.7、§4.1]{acpd}
+
+一般に最小次数\(q_{\min}\)、段階数\(J=q_{\max}-q_{\min}+1\)、\(U=J(J+1)/2\)とします。\(T=aU+r\)、\(0\leq r<U\)に分解し、段階\(j=0,\ldots,J-1\)の初期長さを
+\begin{equation}
+ L_j=a(J-j)
+\end{equation}
+とします。剰余\(r\)は添付\code{DegreeScheduleDecreasingStages}に合わせ、接頭辞長を\(J,J-1,\ldots,1\)と下げながら、\(t=\min(\text{接頭辞長},r)\)として先頭\(t\)段階を1ずつ増やし、\(r\leftarrow r-t\)とします。単純なラウンドロビンや最大剰余法へ置換していません。\cite{acpdsrc}
+
+\(q_{\min}=1,q_{\max}=10,T=55\)では\((L_0,\ldots,L_9)=(10,9,8,7,6,5,4,3,2,1)\)です。予算が短い場合は長さ0の段階もあり、全ての次数を必ず訪れるとは限りません。
+
+反復\(k\)に対応する予定次数\(q_k^{\rm raw}\)は累積長から決めます。その後、有効行数\(M_s=|I|\)が
+\begin{equation}
+ M_s\geq S_{d,q_k}=\binom{q_k+d}{d}
+\end{equation}
+を満たすまで次数を下げます。この条件は「未知係数より独立な観測方程式が少ない」ことを避ける必要条件であり、良い条件数や列フルランクを保証しません。幾何学的な階数不足を理由にさらに自動で別のモデルへ切り替えず、SVDの階数を報告します。
+
+同じ予定次数でも、責任度が小さい行の数によって実使用次数は変わり得ます。そのため履歴には\code{raw_degree}と\code{degree}の両方を保存します。
+
+\section{逐次合成、最良状態、停止判定}\label{sec:composition}
+\subsection{現在の点へ作用する写像列}
+各E-stepは現在の\(Y^{(k)}\)から事後を求め、M-stepは同じ現在点上で\(\mathcal A_k\)を当てはめます。
+\begin{equation}
+ Y^{(k+1)}=\mathcal A_k(Y^{(k)}),\qquad
+ \mathcal D_k=\mathcal A_{k-1}\circ\cdots\circ\mathcal A_0.
+\end{equation}
+固定した元座標だけで単一の変位場を再推定する方式ではありません。合成の次数は最大で\(\prod_iq_i\)まで増え得ますが、展開して巨大な多項式に変換せず、個々の写像列を保持します。\cite[§3.6]{acpd}
+
+\subsection{返却状態の厳密な定義}
+内部指標を\(s_k=\sqrt{d\sigma_k^2}\)とします。初期点群、初期分散、空の写像列を候補として保存し、新しい\(s_k\)が真に小さければ最良状態を更新します。返却するのは
+\begin{equation}
+ k_*=\argmin_{0\leq k\leq k_{\rm executed}}s_k
+\end{equation}
+の点群、分散、\(k_*\)個の写像列です。同値なら先に得た状態を保持します。途中で悪化した点群だけを巻き戻し、変換係数や分散を最後のままにすることは禁止します。論文Fig.1に対応します。\cite{acpd}
+
+\subsection{実装で使う停止条件}
+相対変化は\(10^{-12}\)を分母の数値補助量として
+\begin{align}
+ \delta_Y&=\frac{\norm{Y^{(k+1)}-Y^{(k)}}_F}{\norm{Y^{(k)}}_F+10^{-12}},\\
+ \delta_\sigma&=\frac{|\sigma_{k+1}^2-\sigma_k^2|}{|\sigma_k^2|+10^{-12}},\qquad
+ \delta_s=\frac{|s_{k+1}-s_k|}{|s_k|+10^{-12}}
+\end{align}
+とします。3量が許容値未満となる反復が既定で5回続けば停止します。内部指標が許容値未満なら直ちに停止します。その他、最小6反復後に、明確な反発、8回の有意改善なし、反復上限、有効責任度の不足で停止します。
+
+有意改善は\(s_{\rm best}-s_k>\max(10^{-12},10^{-6}|s_{\rm best}|)\)です。反発は有意改善なしが5回以上かつ\(s_k>(1+10^{-3})s_{\rm best}+10^{-12}\)です。有意改善の閾値は待機回数にだけ使い、真の最小指標の保存を省きません。実使用次数が変わったときは待機回数をリセットします。
+
+\code{history}は試みた全反復、\code{steps}は返却する最良状態までの写像列です。したがって両者の長さは異なることがあります。反発・改善なしによる終了は「許容値まで収束」と同一視しません。
+
+\subsection{外部対応情報は登録に流入させない}
+点数が同じという理由だけで\(x_m\leftrightarrow y_m\)を既知対応と扱いません。原論文付録B.8の外部RMSE監視は、意味のある既知対応がある評価用の条件です。本ライブラリの順不同登録は内部指標だけで状態を選びます。\cite{acpd} 第\ref{sec:accuracy}節の対応付きRMSは評価スクリプトだけが計算し、事後・当てはめ・停止へ渡していません。
+
+\section{剛体初期化を固定した非剛体モード}\label{sec:hybrid}
+初期姿勢\(T_0(y)=R_0y+t_0\)が与えられる場合、正規化座標では
+\begin{equation}
+ \widetilde T_0(u)=R_0u+\frac{R_0c_X+t_0-c_X}{s}
+\end{equation}
+と共役変換します。FilterRegの増分を合成した最終世界姿勢を\(T_F(y)=R_Fy+t_F\)として保存します。
+
+\textbf{解析段階では\(R_F,t_F\)を変更しません。} 初期解析点は\(u^{(0)}=\mathcal N(T_F(y))\)です。最良状態の解析列を\(\mathcal D_{k_*}\)とすると、全変換は
+\begin{equation}
+ T(y)=\mathcal N^{-1}\!\left(\mathcal D_{k_*}(\mathcal N(T_F(y)))\right).\label{eq:hybrid}
+\end{equation}
+残差変位は\(u_F(y)=T(y)-T_F(y)\)、全変位は\(u(y)=T(y)-y\)です。返却する\code{rigid_transformed}は\(T_F(Y)\)、\code{transformed}は\(T(Y)\)です。
+
+\subsection{姿勢と分散を別の初期条件として扱う}
+ユーザー要求の初期ポーズ継承は、上式の\(T_F\)です。分散を引き継ぐこととは別です。解析段階の初期分散は次の優先順位で決めます。
+
+\begin{enumerate}
+\item 明示的な解析\code{sigma2}があれば、それを世界座標の二乗単位として使います。
+\item \code{initialization="cpd"}では、剛体更新後の点群に対しCPD式の全対平均を計算します。論文に合わせた既定です。
+\item \code{initialization="filterreg"}では剛体段階の最終分散を継承します。今回の二段階統合に対する明示的な追加選択です。
+\end{enumerate}
+
+単独\code{analytic}モードには継承元がないため、明示分散なしで\code{filterreg}初期化を要求すると入力エラーです。非常に小さい剛体分散を継承すると対応が局所化し、初期内部指標より改善せず解析列が空で返る場合があります。一方CPD式の大きな初期分散は対応を広げ、既に良い剛体配置を変えてしまう場合があります。どちらかが常に有利とは主張しません。
+
+\section{再適用、微分、保存された写像の意味}\label{sec:mapping}
+保存した写像は登録に使わなかった点にも式\eqref{eq:hybrid}を順番に適用します。元の移動点の個数や点番号へ係数を結び付けていません。
+
+\subsection{Taylor写像のヤコビアン}
+\(u\)の第\(j\)成分に対する基底微分は
+\begin{equation}
+ \frac{\partial}{\partial u_j}\frac{u^\alpha}{\alpha!}=
+ \begin{cases}
+ u^{\alpha-e_j}/(\alpha-e_j)!,&\alpha_j>0,\\
+ 0,&\alpha_j=0.
+ \end{cases}
+\end{equation}
+\(u_j=0\)でも評価できる形を使い、基底値を\(u_j\)で割りません。残差係数\(C_k\)から
+\begin{equation}
+ J_{\mathcal A_k}(u)=I_d+C_k^T\,[\nabla\phi_{q_k}(u)]
+\end{equation}
+を計算します。\(u_{j+1}=\mathcal A_j(u_j)\)として連鎖律を使うと、
+\begin{equation}
+ J_T(y)=J_{\mathcal A_{k_*-1}}(u_{k_*-1})\cdots
+         J_{\mathcal A_0}(u_0)R_F.
+\end{equation}
+正規化の\(1/s\)と逆正規化の\(s\)は等方なスカラーなので相殺します。実装の返却形は\((n,d,d)\)で、行が出力座標、列が入力座標です。
+
+\subsection{保存形式と不変条件}
+保存形式は版番号2のNPZです。係数列、各次数、\(R_F,t_F,c_X,s\)、最良分散、段階履歴、終了理由、実装名を含めます。Pythonオブジェクトのpickleを使わず、読込時は\code{allow_pickle=False}です。有限性、配列形状、回転の直交性と行列式、履歴の連続性、係数数、最良反復と写像列長を検査します。
+
+世界分散の尺度変換は積の結合順で最下位桁が異なることがあるため、段階分散と結果分散の整合は倍精度機械イプシロンの8倍の相対許容で比較します。この検査追加時に完全一致を要求して正常な12試験を失敗させた履歴と、修正後の再試験も検証記録に残しています。
+
+\subsection{保証しない性質}
+多項式写像の解析性だけでは、単射性、正のヤコビアン行列式、位相保存、逆写像の存在は保証されません。折り畳みや領域外の大きな外挿が起こり得ます。逆写像を閉形式で提供せず、非有限になる評価は例外とします。ヤコビアンを返すことは、可逆性を検証済みという意味ではありません。
+
+\section{入力契約、失敗時の扱いと数値限界}\label{sec:contracts}
+公開APIの順序は\code{registration(fixed, moving, ...)}です。登録には各点群で少なくとも\(d+1\)点が必要で、有限な2D/3D座標を要求します。無限大、NaN、空点群、異なる空間次元、不正な姿勢、範囲外の設定を拒否します。配置による追加の階数不足は実際のM-stepで検出します。
+
+\code{copy=False}では、NumPyの\code{float64}、C連続、適切に整列した配列を要求します。\code{copy=True}は明示的な型・配置変換を許します。読取専用配列を受け付け、入力を変更しません。ここで\code{copy=False}はアルゴリズムの作業領域や境界内部での所有コピーを一切作らないという意味ではありません。
+
+C++接続は所有した数値領域へ入力をコピーした後にGILを解放し、出力領域はcapsuleの所有者が解放する設計です。Rust接続はNumPyの読取借用から所有行列へコピーし、その後\code{Python::detach}内で数値核を実行します。両方ともGILを解放した区間でPython配列の所有権に依存した生ポインタを使わない構成です。ただし、\textbf{接続の実行検証は未完了}であり、この設計説明を動作確認の代わりにしていません。\cite{nbdoc,pyo3doc,numpydoc}
+
+\subsection{例外と正常な早期終了}
+無効入力は\code{ValueError}/\code{TypeError}に対応します。数値的支持不足、負のモーメント、拘束不足、距離や写像のオーバーフローなどは数値例外です。これらを成功値や別方式への切替で隠しません。
+
+ACPDの内部指標の反発や有意改善なしは、最良状態を返す明示的な早期終了です。有限な結果が返ること、\code{converged=True}であること、外部正解に近いことは別です。剛体段階の収束は、正規化座標での移動RMSと分散の相対変化が両方許容値以下であることとします。
+
+\subsection{厳密EMの単調性と異なる目的の比較}
+正確な事後、正確なM-step、同じ目的の更新であればEMの議論が可能ですが、本版FilterRegには格子近似と有限回数のGauss--Newtonが含まれます。ACPDも数値的な階数打切り、次数変更、分散下限、最良状態返却を含みます。実装全体について無条件の尤度単調性や大域最適性は主張しません。
+
+\(\sqrt{d\sigma^2}\)はその反復の事後で重み付けした内部量です。対応付きRMS、最近傍距離、点対面残差とは一般に異なります。内部量が改善しても外部正解から遠ざかる可能性は、第\ref{sec:accuracy}節で実際に確認しています。
+
+\section{構成、責務分離、両言語の対応}\label{sec:architecture}
+数値核は\code{types}、\code{lattice}、\code{gaussian}、\code{rigid}、\code{analytic}、\code{registration}に分離します。格子は値チャンネルの意味を知らず、ガウス統計層がモーメントを組み立て、剛体・解析の当てはめ層がそれぞれの制約を解きます。統合層だけが二段階の順序と姿勢固定を管理します。
+
+C++ではEigen、Rustではnalgebraを数値線形代数に用います。Rust数値核にはPython依存もC++呼出しもなく、\code{unsafe}を禁止しています。PyO3とnanobindの接続部分は引数検査、所有コピー、GILの管理、結果の型変換に限定します。
+
+共通Python層は不変の設定型、配列契約、結果の評価・保存を担当します。\code{engine="cpp"}と\code{engine="rust"}は明示選択です。指定した拡張がない場合、他方やPython参照計算へ黙って切り替えません。試験用のC++実行形式への接続は\code{tests}にのみあり、製品の実行経路ではありません。
+
+\subsection{SOLID・KISS・DRYの適用範囲}
+単一責務は上記の層分離で実現します。低水準のガウス計算や写像評価を登録処理から独立して再利用できます。点対点／点対面は同じtwist組立てを共有し、Taylorの全出力座標は一度の分解を共有します。2D/3Dは共通の式を使い、運動学に必要な小さい差だけ分岐します。
+
+ただし、独立した二言語実装という要求のため、数式の実装が言語間で重複すること自体は避けられません。共通の原コード由来数値データと操作仕様で整合を保ちます。不要な継承階層や汎用最適化枠組みを加えず、少数の型と関数で構成します。これらは設計上の選択であり、全ての拡張要求に対する完全なSOLID準拠を証明するものではありません。
+
+\section{操作仕様と環境の再現}\label{sec:reproduce}
+\subsection{主要な既定値}
+\begin{longtable}{@{}p{48mm}p{28mm}p{77mm}@{}}
+\toprule
+設定 & 既定 & 意味\\\midrule\endhead
+剛体最大反復 & 60 & FilterReg外側反復の上限です。\\
+剛体解法・距離 & twist・点対点 & 2D/3Dの局所剛体更新です。\\
+剛体内側反復 & 1 & 同じ事後を固定したGauss--Newton回数です。\\
+剛体許容値・\(w\) & \(10^{-7},0.1\) & 正規化座標の停止判定、外れ値重みです。\\
+剛体分散下限 & \(10^{-8}\) & 正規化座標の二乗単位です。\\
+解析最大反復・次数 & 55・1から10 & 三角形の段階長を使います。\\
+解析許容値・\(w\) & \(10^{-7},0.1\) & 内部指標・相対変化、外れ値重みです。\\
+解析分散初期化 & CPD式 & 明示指定、またはFilterReg継承も選べます。\\
+解析分散下限 & \(10^{-12}\) & 正規化座標の二乗単位です。\\
+SVD閾値・有効質量 & 各\(10^{-12}\) & 相対特異値閾値、責任度の行選択です。\\
+最小反復・安定待機 & 6・5 & 微小変化による停止判定です。\\
+改善なし待機 & 8 & 有意改善が得られない反復数です。\\
+\bottomrule
+\end{longtable}
+全パラメータと単位は\path{docs/API.md}、実行例は\path{examples/register_points.py}、C++単独例は\path{examples/native_core.cpp}、Rust単独例は\path{rust/crates/acpd-core/examples/register_points.rs}にも記載します。
+
+\subsection{pixi環境}
+\code{cpp}環境はC++コンパイラ、CMake、ninja、nanobindを含み、Rustを要求しません。\code{rust}環境はRust、maturin、PyO3側の依存を使い、C++数値核やnanobindを要求しません。\code{default}は統合環境、\code{docs}は文書専用環境です。環境・機能・タスクの分離はpixiの構成規約に従います。\cite{pixidoc}
+
+想定する操作は次のとおりです。\textbf{これらのpixi経由の依存解決は今回の環境では実行できていません。}
+\begin{verbatim}
+pixi run -e cpp test-cpp
+pixi run -e rust test-rust
+pixi run test
+pixi run -e docs docs
+\end{verbatim}
+
+\code{pixi.lock}と\code{Cargo.lock}は未生成です。バージョン範囲と一部の固定バージョンを指定したソース設定を、ロック済み環境と呼びません。C++の実際の検証は、利用可能だったGNU C++ 14.2、CMake、Python 3.13.5で行いました。pixi設定のPython 3.12環境そのものの検証とは区別します。
+
+\subsection{拡張なしで実行済みの数値核検証}
+\begin{verbatim}
+cmake -S cpp -B build/core -DACPD_BUILD_PYTHON=OFF \
+  -DACPD_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build/core --parallel 2
+ctest --test-dir build/core --output-on-failure
+\end{verbatim}
+さらに試験用実行形式を明示してPython試験を実行します。この経路をnanobindの検証と呼ぶことは禁止します。C++静的ライブラリのインストールと、別のCMake利用側からの\code{find_package(acpd)}および2D/3Dの再適用例も確認します。
+
+\section{計算量と性能の主張の範囲}\label{sec:complexity}
+ACPDの直接E-stepは\(O(MNd)\)時間です。全事後行列を保存せず、1観測点分の重みと\(\rho,b,h\)を集計するため、点群を除く主要な作業領域は\(O(Md)\)です。
+
+解析当てはめで\(K=S_{d,q}\)、有効行数を\(M_s\)とすると、基底・設計行列は\(O(MK+M_sK)\)領域を使い、密な最小二乗は概ね\(O(M_sK^2+K^3)\)です。点数に依存しないのは\(K\)の側であり、全登録処理が点数に依存しないわけではありません。\cite[付録A]{acpd}
+
+格子では拡張点数を\(L_P=N+M\)、頂点数を\(L_V\)、値チャンネル数を\(C\)とすると、単体の順位計算が\(O(L_PD^2)\)、SplatとSliceが\(O(L_P(D+1)C)\)、Blurが\(O(L_V(D+1)C)\)です。ハッシュ探索は平均的な定数時間を仮定します。最悪の場合のハッシュ衝突まで含む厳密線形時間保証ではありません。
+
+観測専用Blur省略版は初回の観測側構築後、分散固定なら各反復でクエリの単体計算とSliceを行います。\code{probreg}方式は切替時に二つの格子を構築することがあるので、その回数を1と偽って報告しません。
+
+twistの未知数\(p\)は2Dで3、3Dで6です。点対点の正規方程式組立ては\(O(Mdp^2)\)、小行列の分解は\(O(p^3)\)です。解析写像列\(k_*\)個の再適用は\(O(Md\sum_{j<k_*}S_{d,q_j})\)です。
+
+本書の比較誤差と合成例の時間から、FilterReg論文の「ICPより何倍速い」という性能を推定しません。試験用実行形式の往復にはプロセス起動と直列化が含まれ、論文の実行時間と比較できません。GPUや多スレッド性能も測定していません。
+
+\section{原資料との差分と選択の根拠}\label{sec:differences}
+\begin{longtable}{@{}p{30mm}p{58mm}p{65mm}@{}}
+\toprule
+対象 & 添付資料の内容・不整合 & 本版の選択\\\midrule\endhead
+FilterReg記号 & 原論文は\(X\)が移動側、\(Y\)が固定側です。 & 公開操作では固定\(X\)、移動\(Y\)に統一し、式を正しく置換します。\\
+ガウスの係数 & PDF使用時と非正規化Gaussian和で外れ値定数が異なります。 & \((2\pi\sigma^2)^{d/2}\)を定数側に含めます。\\
+原FilterReg省略版 & 観測のみ構築する実格子・Blur省略です。 & 独立した\code{permutohedral_noblur}として実装し、標準版と区別します。\\
+probreg切替 & 拡張入力・頂点数による切替と利得を使います。 & \code{probreg}選択でこの規則を保持します。\\
+probregスカラー & 独立キーの範囲外読出し、内部への\code{start}未転送があります。 & 範囲外読出しを避け、開始位置を正しく適用します。参照試験ではクエリ値を0にします。\\
+格子の精度 & 単精度と短整数キーです。 & 倍精度、64ビットキー、変換前検査を使います。ビット一致とは呼びません。\\
+原FilterReg外れ値 & 固定定数0.2と\(m_0<0.01\)の処理があります。 & 論文の\(w,N,M,\sigma\)による責任度を用い、固定設定の全出力一致とは称しません。\\
+probreg分散 & 更新前の点と固定値3を使う箇所があります。 & 更新後の点と\(d\)で式\eqref{eq:variance}を評価します。\\
+probreg Kabsch & 重心と共分散で重みの次数が一致しません。 & 任意Kabschでは一貫した責任度を使用します。既定はtwistです。\\
+ACPD解法 & 添付2Dは正規方程式LDLT、3DはブロックQRです。 & 論文で許される共有設計行列のSVDを使います。正則化は加えません。\\
+ACPD最良状態 & コードは有意改善条件と保存が結び付きます。 & 論文Fig.1の真の最小指標を保存し、有意改善は待機回数だけに使用します。\\
+ACPD外部RMSE & 同じ点数で対応付きRMSEを自動使用する箇所があります。 & 論文の既知対応という前提を優先し、順不同登録には使用しません。\\
+統合処理 & 二つの論文単体には本ユーザー指定の二段階処理はありません。 & 姿勢固定を統合仕様として追加し、分散継承は任意選択とします。\\
+\bottomrule
+\end{longtable}
+これらは\path{docs/SOURCE_DIFFERENCES.md}にも列挙します。論文と原コードの両方が存在する場合に、都合のよい方だけを選んで同一実装と称することを避けるためです。
+
+\section{厳格レビューと是正内容}\label{sec:review}
+前回版の受入判定は\textbf{不合格}です。理由は努力量ではなく、要求された方法を識別する主要構成が欠落していたことです。注意書きを付ければ主要アルゴリズムの削除が許される、という扱いは適切ではありませんでした。
+
+\begin{longtable}{@{}p{19mm}p{65mm}p{69mm}@{}}
+\toprule
+ID・重大度 & 前回の欠陥 & 是正\\\midrule\endhead
+R01・P0 & permutohedralがなく、全対評価／半径探索のみでした。 & 単体・重心座標・Splat・全軸Blur・Sliceと観測専用省略版を両言語で実装しました。\\
+R02・P0 & 剛体更新がSVDだけでtwistがありませんでした。 & \(\SE(2),\SE(3)\)のtwistと点対線・面を実装しました。\\
+R03・P0 & 固定参照、正則化、剛体直交制約、変位上限などが納品間で変化していました。 & 無正則化の絶対写像当てはめと現在点への逐次合成に統一しました。\\
+R04・P1 & 最大次数8、既定3で論文の次数10を指定できませんでした。 & 2D66基底、3D286基底まで実装しました。\\
+R05・P1 & 次数割当の剰余規則が原コードと異なりました。 & 三角形の接頭辞割当まで照合しました。\\
+R06・P1 & 最終状態を返すだけで最良状態の復元がありませんでした。 & 点群・分散・写像列を一緒に復元します。\\
+R07・P1 & 姿勢継承と分散継承を同一の必須条件としていました。 & 両者を分離し、論文式初期分散と任意の継承を区別しました。\\
+R08・P1 & 自己試験だけで原実装との成分照合がありませんでした。 & 原コードから独立した比較用実行形式を作成しました。\\
+R09・P1 & Python接続とpixiが未実行でした。 & \textbf{未達のままです。} 実行記録と阻害理由を残し、代替試験で合格扱いにしません。\\
+R10・P2 & 三系統の名前・設定・保存仕様が混在しました。 & v0.2.0の正本、移行説明、入力指紋、追跡表に統一しました。\\
+\bottomrule
+\end{longtable}
+
+レビューと作業書は実装前に作成し、\path{WORK_ORDER.sha256}で固定しました。判定が難しい項目を後から削除したり、環境がないことを理由に完了条件の意味を変えたりしません。
+
+\section{原実装比較と実行済み試験}\label{sec:tests}
+\subsection{参照計算の独立性}
+添付\code{probreg}の\code{permutohedral.cpp/.h}をそのまま使う比較用実行形式、原FilterRegのBlur省略単体計算を使う実行形式、Analytic-CPDの\code{Algo.h/Fitting.h}から対象関数を抽出した実行形式を作成しました。製品の新しい数値核をリンクしていません。
+
+Analytic-CPDの文字コードをGB18030からUTF-8へ変換し、関数本体を保持したまま比較用名前空間へ入れ、Windows固有の\code{__declspec}を空定義にします。FilterRegの補助関数は無関係なCUDAヘッダを小さいキー宣言で置き換えます。probregはスカラー経路を明示します。抽出元、関数名、元の行範囲、元ファイルと抽出部分のSHA256、ビルドコマンドを記録します。
+
+元の実行環境全体、描画処理、データ読込、元の停止判定を丸ごと再現する比較ではありません。以下は原コードの\textbf{成分計算}に対する照合です。
+
+\subsection{比較結果}
+\begin{tabularx}{\textwidth}{@{}Yrr@{}}
+\toprule
+対象 & 条件数 & 最大絶対差\\\midrule
+permutohedralの出力 & 32 & \(9.2059\times10^{-7}\)\\
+原FilterRegの単体重み & 2 & \(2.4017\times10^{-7}\)\\
+CPD事後統計 & 6 & \(3.5527\times10^{-15}\)\\
+Taylor基底 & 12 & \(5.5511\times10^{-17}\)\\
+解析M-stepの更新点 & 8 & \(5.9952\times10^{-15}\)\\
+次数割当 & 24 & 0（全条件で一致）\\
+\bottomrule
+\end{tabularx}
+
+全84条件で、比較スクリプトが定義した数値許容と構造検査を満たしました。格子頂点数、単体キー、次数列も対応する条件で一致しました。参照格子は単精度、本版は倍精度です。\textbf{約\(9.21\times10^{-7}\)という値は、厳密なガウス和に対する近似誤差ではありません。} 同じ種類の格子近似を行う原コードと今回の移植の差です。
+
+固定比較データのSHA256は
+\begin{center}\small
+\nolinkurl{a2873d3a1527c11298c0238a62a0268b25fb946e9b0de281621e3ea1baf4a187}
+\end{center}
+です。数値・許容・各ケースは\path{tests/fixtures/upstream.json}と\path{validation/upstream_comparison.json}に保持します。
+
+\subsection{検査単位と重複計上の防止}
+C++単体は\textbf{100項目の検査}で、CTest上では1つの実行形式です。Releaseでも検査を無効化しない仕組みです。アドレス検査・未定義動作検査・リーク検査もこの数値核で実行しています。
+
+Python経由の\textbf{151試験}は、C++試験用実行形式を明示的に使います。格子比較、事後、基底、当てはめ、twistの有限差分、次数低減、姿勢固定、保存復元、入力例外などを含みます。84条件はこれらの試験と重なるため、独立な成功例として足し合わせていません。
+
+Rustには84参照条件と6つの性質検査、計90個の試験関数を収録しました。実nanobind/PyO3の境界用13条件、両実装の一致用8条件も用意しましたが、\textbf{いずれもこの環境では未実行}です。欠けた拡張を自動スキップして試験全体を成功表示しない設定にしています。
+
+\section{合成データでの精度監査：悪化例も保持}\label{sec:accuracy}
+原コードとの成分一致とは別に、二段階処理が実際に精度を改善するかを確認しました。2D/3Dそれぞれ3乱数種、点数180、3種類の計算（標準格子、観測専用Blur省略、直接法）、2種類の解析初期分散（CPD式、FilterReg継承）で、計36条件です。\code{probreg}自動切替はこの精度監査の36条件には含めず、成分試験で扱っています。
+
+既知変形は第1座標に\(0.03y_2^2+0.06\)を加えるものです。剛体の初期分散は世界単位で0.08、解析の最大反復55、最大次数10です。全設定、点群生成、対応付きRMSと対称最近傍RMS、時間、終了理由を\path{tools/benchmark_synthetic.py}とJSONに保存します。
+
+\begin{tabularx}{\textwidth}{@{}Yr@{}}
+\toprule
+剛体段階後との比較 & 条件数\\\midrule
+対応付きRMSが\(10^{-8}\)を超えて改善 & 17\\
+対応付きRMSが\(10^{-8}\)を超えて悪化 & 6\\
+差が\(10^{-8}\)以内 & 13\\
+数値例外 & 0\\
+\bottomrule
+\end{tabularx}
+
+\subsection{悪化と改善の具体例}
+標準格子・2D・乱数種90・CPD式初期分散では、対応付きRMSは初期\(0.10933\)、剛体後\(0.05664\)、解析後\(0.17449\)となりました。解析段階は55反復まで進み、\textbf{剛体段階より悪化}しています。都合の悪い例として削除したり、内部指標だけを示して成功と呼んだりしません。
+
+同じ標準格子の3D・乱数種91・CPD式初期分散では、剛体後\(0.04799\)から解析後約\(9.79\times10^{-5}\)へ改善しました。34反復を試み、返却した写像列は最良状態の29反復分です。FilterReg分散を継承する条件では、最良状態が初期点のままで解析列0個となる例もありました。
+
+\subsection{この監査から言えること・言えないこと}
+内部の\(\sqrt{d\sigma^2}\)を最小にすることは、既知対応のRMSを最小にすることと同じではありません。局所的な確率最適化、広い初期分散、柔軟な解析写像は、対応の曖昧な形状で縮退した解を選び得ます。逆に、小さい分散継承では有用な残差更新が進まない場合があります。
+
+この監査は原論文の形状・欠損・外れ値・大変形実験の再現ではなく、一般的な成功率の推定でもありません。無正則化という忠実性を維持したまま、実際に起こった限界を報告するための小規模な検査です。新しい正則化や対応制約が必要な応用では、それを別の拡張仕様として評価する必要があり、本版へ黙って加えて成功例に変えることはしません。
+
+\section{完了条件の判定と残る阻害}\label{sec:dod}
+DoDは\path{docs/review/WORK_ORDER.md}で実装前に固定しました。PASSは要求した証拠を得た項目、SOURCE\_ONLYはコードと静的確認だけ、BLOCKEDは環境阻害による未達です。SOURCE\_ONLYやBLOCKEDを実行済みPASSへ読み替えません。
+
+\begin{longtable}{@{}p{15mm}p{40mm}p{98mm}@{}}
+\toprule
+ID & 判定 & 内容\\\midrule\endhead
+D01 & PASS & 厳格レビュー、固定作業書、入力指紋、対応表を作成しました。\\
+D02 & PASS（実装） & 両言語に実格子を実装しました。数値比較の実行証拠はC++です。Rustの実行はD08の免除範囲です。\\
+D03 & PASS（実装） & 逆事後、分散、twist、点対線・面を実装しました。有限差分等の実行証拠はC++です。\\
+D04 & PASS（実装） & 無正則化の解析当てはめ、次数計画、逐次合成、最良状態を実装・照合しました。\\
+D05 & PASS（C++経路） & 姿勢固定、写像再適用、保存復元、ヤコビアンを確認しました。\\
+D06 & PASS & C++ビルド、原コード成分比較、異常系、メモリ検査を実行しました。\\
+D07 & \textbf{BLOCKED} & nanobindがなく、実拡張の構成・ビルドに到達できていません。試験用接続は代替証拠にしません。\\
+D08 & SOURCE\_ONLY & 独立Rust数値核とPyO3、90試験関数を収録・静的確認しました。コンパイルと実行必須のみ先行指示で免除されています。\\
+D09 & \textbf{BLOCKED} & pixi本体がなく、依存解決を実行できていません。設定・タスク整合性の検査だけでは未達です。\\
+D10 & PASS & 本LaTeX/PDF、参考資料、差分、検証と限界を記述しました。再コンパイル・全ページ描画検査の結果を配布の検証記録に保存しています。\\
+D11 & PASS & クリーン展開からC++数値核100項目とPython経由151試験を再実行しました。最終版のコード指紋一致と配布内容も検査しています。\\
+\bottomrule
+\end{longtable}
+
+\subsection{阻害の具体的な証拠}
+実nanobind構成のCMakeを実行すると、Pythonは見つかるものの\code{No module named nanobind}で失敗しました。指定バージョンの取得も失敗しています。\code{pixi install -e cpp}は実行ファイルがなく開始できませんでした。RustコンパイラとCargoも存在しませんでした。
+
+これらはソースの正しさを否定する試験結果ではありませんが、ビルド可能性を証明する結果でもありません。\path{validation/environment.json}には試みたコマンド、戻り値、実行ファイルの欠如、ログを記録しています。\code{pixi.lock}や\code{Cargo.lock}を架空に作成したり、未実行の継続的統合を合格扱いにしたりしません。
+
+\textbf{従って、総合判定は未完了です。} Rustの実行免除を尊重してもD07とD09は残ります。是正したソースと検証資料は提供しますが、「DoDをすべて満たした完成版」とは表示しません。
+
+\section{資料識別、ライセンス、再照合の手順}\label{sec:sources}
+アルゴリズムの根拠は添付版です。主要な指紋を以下に示し、完全なSHA256とファイル容量は\path{docs/SOURCE_MANIFEST.json}に記録します。
+
+\begin{tabularx}{\textwidth}{@{}Yp{42mm}@{}}
+\toprule
+資料 & SHA256先頭16桁\\\midrule
+FilterReg論文（2019年7月16日v3） & \code{8f88e6854f484f01e}\\
+Structured Analytic CPD論文（2026年5月15日v2） & \code{1c71045fa1aa27020}\\
+\code{FilterReg-master.zip} & \code{5575eb0fc2a7aa14d}\\
+\code{probreg-master(1).zip} & \code{86ed33276127ba10e}\\
+\code{Analytic-CPD-main(1).zip} & \code{e5508e6106739ec78}\\
+\code{cpd3d_rs-main.zip} & \code{5f63b4e7a6c269331}\\
+\bottomrule
+\end{tabularx}
+
+新規統合部分はMITとして配布し、permutohedral由来部分のBSD-3-Clause、Analytic-CPDのMIT、同梱Eigenの各通知を保持します。プロジェクト全体のMIT表示で第三者の条件を上書きしません。原FilterRegのプロジェクト全体を新しいライセンスで再配布することは避け、比較用の対象関数はユーザーが持つ添付ZIPから再抽出する道具を用意します。原PDF、大きな原データ、フォントファイル、作業中の実行形式はソースZIPへ含めません。
+
+原コードの再照合は、元添付を置いたディレクトリを指定して\path{tools/build_reference.py}を実行し、\path{tools/generate_fixtures.py}で比較値を再生成します。\path{tools/validate_sources.py}が製品側数値核との差を検査します。Rust用の同じ比較値は\path{tools/generate_rust_fixtures.py}で生成します。原コードの必要な変更と抽出範囲は\path{validation/oracle_provenance.json}に保持します。
+
+環境取得、接続ビルド、各実装の一致試験を後で実行した場合は、今回のSOURCE\_ONLY/BLOCKED記録を消さず、新しい実行条件・ログ・指紋を伴う判定として追加することが、検証履歴を保つ条件です。
+
+\clearpage
+\begin{thebibliography}{99}
+\addcontentsline{toc}{section}{参考資料}
+\bibitem{fr} W. Gao and R. Tedrake,
+\emph{FilterReg: Robust and Efficient Probabilistic Point-Set Registration using Gaussian Filter and Twist Parameterization},
+CVPR 2019. 本書の基準は添付arXiv:1811.10136v3、2019年7月16日、10ページです。
+特に§3--5、式(6)--(19)を参照しています。
+
+\bibitem{acpd} W. Feng and H. Zheng,
+\emph{Structured Analytic Coherent Point Drift for Non-Rigid Point Set Registration},
+添付arXiv:2605.00934v2、2026年5月15日、22ページです。
+§3、Fig.1、付録A--Cを主要な基準としています。未添付の更新版へ置き換えていません。
+
+\bibitem{probregsrc} ユーザー添付\code{probreg-master(1).zip}。
+\path{probreg/filterreg.py}、\path{probreg/cc/kabsch.cc}、
+\path{third_party/permutohedral/permutohedral.cpp}および\path{permutohedral.h}を照合しました。
+permutohedral部分の著作権・BSD-3-Clause通知を保持しています。
+
+\bibitem{frsrc} ユーザー添付\code{FilterReg-master.zip}。
+\path{geometry_utils/permutohedral_common.hpp}、\path{corr_search/gmm/}、
+\path{kinematic/rigid/rigid_point2point_cpu.cpp}、
+\path{kinematic/rigid/rigid_point2plane_cpu.cpp}等を照合しました。
+本書の「原FilterReg省略版」は観測専用格子を意味します。
+
+\bibitem{acpdsrc} ユーザー添付\code{Analytic-CPD-main(1).zip}。
+\path{Analytic_CPD/Algo.h}、\path{Analytic_CPD/Fitting.h}。
+Wei Feng、2026年、MIT通知を保持しています。元の文字コードと抽出行範囲は比較記録に記載しています。
+
+\bibitem{cpd3dsrc} ユーザー添付\code{cpd3d_rs-main.zip}。
+PythonからのRust数値核利用の構成を参照しました。本版は完全な置換互換ではなく、
+元のIFGT、類似変換の尺度、旧保存形式をそのまま再現するものではありません。
+
+\bibitem{nbdoc} nanobind公式文書、\emph{The nb::ndarray class}、所有権およびGILのAPI文書。
+\url{https://nanobind.readthedocs.io/en/latest/ndarray.html}。
+依存APIの確認のみに使用し、登録アルゴリズムの根拠には使用していません。
+本版の指定バージョンは2.12.0です。
+
+\bibitem{pyo3doc} PyO3公式API文書、Pythonへの接続、所有オブジェクト、\code{Python::detach}。
+\url{https://docs.rs/pyo3/0.28.3/pyo3/}。
+依存APIの確認資料です。実際のコンパイル成功の証拠ではありません。
+
+\bibitem{numpydoc} rust-numpy 0.28.0公式API文書、
+\emph{PyUntypedArrayMethods}、\emph{PyReadonlyArray}。
+\url{https://docs.rs/numpy/0.28.0/numpy/trait.PyUntypedArrayMethods.html}。
+整列、C連続、配列形状と読取借用を確認しています。
+
+\bibitem{pixidoc} Pixi公式文書、\emph{Pixi manifest}、環境・機能・タスク。
+\url{https://pixi.prefix.dev/latest/reference/pixi_manifest/}。
+設定仕様の確認資料です。依存解決済み環境やロックファイルの代替ではありません。
+\end{thebibliography}
+\end{document}

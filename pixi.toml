@@ -1,0 +1,67 @@
+[workspace]
+name = "acpd-filterreg-faithful"
+version = "0.2.0"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+description = "Paper-traceable 2D/3D FilterReg and compositional Analytic-CPD"
+
+[dependencies]
+python = "3.12.*"
+pip = ">=25,<27"
+setuptools = ">=68,<83"
+wheel = ">=0.44,<1"
+numpy = ">=2,<3"
+pytest = ">=8,<10"
+
+[tasks]
+build-api = "python -m pip install --no-deps --no-build-isolation -e ."
+static-check = "python tools/manage.py static-check"
+
+[feature.cpp.dependencies]
+cmake = ">=3.25,<4.3"
+ninja = ">=1.11,<2"
+cxx-compiler = "*"
+[feature.cpp.pypi-dependencies]
+nanobind = "==2.12.0"
+scikit-build-core = ">=0.11,<1"
+build = ">=1.2,<2"
+[feature.cpp.tasks]
+build-cpp = { cmd = "python -m pip install --no-deps --no-build-isolation -e ./cpp", depends-on = ["build-api"] }
+core-cpp = "python tools/manage.py core-cpp"
+test-core = { cmd = "python tools/manage.py test-core", depends-on = ["core-cpp"] }
+test-cpp = { cmd = "python tools/manage.py test-cpp", depends-on = ["build-cpp", "core-cpp"] }
+wheel-cpp = "python -m build --no-isolation --wheel ./cpp --outdir dist"
+demo-cpp = { cmd = "python examples/register_points.py --engine cpp --dimension 2", depends-on = ["build-cpp"] }
+
+[feature.rust.dependencies]
+rust = ">=1.90,<2"
+[feature.rust.pypi-dependencies]
+maturin = ">=1.9,<2"
+build = ">=1.2,<2"
+[feature.rust.tasks]
+build-rust = { cmd = "python -m pip install --no-deps --no-build-isolation -e ./rust", depends-on = ["build-api"] }
+core-rust = "cargo test -p acpd-core --manifest-path rust/Cargo.toml"
+test-rust = { cmd = "python tools/manage.py test-rust", depends-on = ["build-rust", "core-rust"] }
+wheel-rust = "python -m build --no-isolation --wheel ./rust --outdir dist"
+demo-rust = { cmd = "python examples/register_points.py --engine rust --dimension 3", depends-on = ["build-rust"] }
+
+[feature.suite.tasks]
+build = { depends-on = ["build-cpp", "build-rust"] }
+parity = { cmd = "python -m pytest tests/test_parity.py", depends-on = ["build"] }
+test = { depends-on = ["test-cpp", "test-rust", "parity"] }
+wheel-api = "python -m build --no-isolation --wheel . --outdir dist"
+wheels = { depends-on = ["wheel-api", "wheel-cpp", "wheel-rust"] }
+
+[feature.docs.dependencies]
+python = "3.12.*"
+tectonic = ">=0.15,<1"
+fontconfig = ">=2.15,<3"
+font-ttf-noto-cjk = "*"
+[feature.docs.tasks]
+docs = "python tools/manage.py docs"
+
+[environments]
+default = { features = ["cpp", "rust", "suite"] }
+cpp = { features = ["cpp"] }
+rust = { features = ["rust"] }
+docs = { features = ["docs"], no-default-feature = true }

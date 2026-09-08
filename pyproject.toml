@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "acpd-filterreg"
+version = "0.2.0"
+description = "2D/3D FilterReg plus residual Analytic-CPD, with independent C++ and Rust engines"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = ["numpy>=1.26"]
+[tool.setuptools.packages.find]
+where = ["python"]
+[tool.setuptools.package-data]
+acpd_filterreg = ["py.typed"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["python"]
+addopts = "-ra"
+[tool.ruff]
+line-length = 110

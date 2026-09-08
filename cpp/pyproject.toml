@@ -1,0 +1,17 @@
+[build-system]
+requires = ["scikit-build-core>=0.11,<1", "nanobind==2.12.0"]
+build-backend = "scikit_build_core.build"
+[project]
+name = "acpd-filterreg-cpp"
+version = "0.2.0"
+description = "C++/nanobind numerical engine for acpd-filterreg"
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT AND BSD-3-Clause AND MPL-2.0 (see THIRD_PARTY_NOTICES.md)"}
+dependencies = ["numpy>=1.26"]
+[tool.scikit-build]
+minimum-version = "0.11"
+wheel.packages = ["python/acpd_filterreg_cpp"]
+wheel.license-files = ["LICENSES/*", "THIRD_PARTY_NOTICES.md"]
+cmake.build-type = "Release"
+build-dir = "build/{wheel_tag}"

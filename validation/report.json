@@ -1,0 +1,35 @@
+{
+  "release": "0.2.0",
+  "overall": "BLOCKED",
+  "dod": "DoD.json",
+  "rust_execution_waived": true,
+  "cpp_native_assertions_passed": 100,
+  "ctest_test_cases": 1,
+  "python_driver_tests_passed": 151,
+  "upstream_component_cases": 84,
+  "upstream_cases_overlap_with_151": true,
+  "asan_ubsan_leak_assertions_passed": 100,
+  "native_boundary_cases_unexecuted": 13,
+  "cross_engine_cases_unexecuted": 8,
+  "rust_test_functions_unexecuted": 90,
+  "actual_nanobind_built": false,
+  "actual_pyo3_built": false,
+  "pixi_environment_resolved": false,
+  "clean_extraction_test": "PASS",
+  "installed_cpp_consumer": "PASS, 2D and 3D",
+  "accuracy_audit": {
+    "cases": 36,
+    "improved": 17,
+    "regressed": 6,
+    "unchanged_within_1e_8": 13,
+    "exceptions": 0,
+    "correspondences_used_only_for_evaluation": true
+  },
+  "pdf_pages": 24,
+  "all_pdf_pages_visually_inspected": true,
+  "notes": [
+    "No test driver result counts as native Python-extension acceptance.",
+    "Component agreement is not Gaussian approximation error or full-paper benchmark reproduction.",
+    "Historical failed attempts are retained; current passing logs do not erase them."
+  ]
+}

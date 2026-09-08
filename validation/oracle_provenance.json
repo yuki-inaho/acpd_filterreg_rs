@@ -1,0 +1,253 @@
+{
+  "files": [
+    {
+      "archive": "Analytic-CPD-main(1).zip",
+      "path": "Analytic_CPD/Algo.h",
+      "sha256": "8126cc5f92be867e7e505b67b355d6c2b9a9df6d118a08acb9047abfb9195c2f"
+    },
+    {
+      "archive": "Analytic-CPD-main(1).zip",
+      "path": "Analytic_CPD/Fitting.h",
+      "sha256": "ab458ffeed41da15c60188c6e836626fc0a5d7c041aac859dd6a5cd8d75e9549"
+    },
+    {
+      "archive": "probreg-master(1).zip",
+      "path": "third_party/permutohedral/permutohedral.cpp",
+      "sha256": "b5059afcdbd3f4cc63c30fe2a5ce621da072b102768cea258dd04e219bd74642"
+    },
+    {
+      "archive": "probreg-master(1).zip",
+      "path": "third_party/permutohedral/permutohedral.h",
+      "sha256": "9fe85aaaee78b42c5e240092f5ff786c76b99a205a67b3d66fc2e92d6ac26cca"
+    },
+    {
+      "archive": "FilterReg-master.zip",
+      "path": "geometry_utils/permutohedral_common.hpp",
+      "sha256": "84963de7ca6303bba83fd59d457eff0c1479aef76d358b9ae25e29d626256cdf"
+    }
+  ],
+  "extracts": [
+    {
+      "source": "Algo.h",
+      "symbol": "PosteriorResult",
+      "first_line": 30,
+      "last_line": 38,
+      "extracted_utf8_sha256": "2b46aac0958d8514437beb5b9b786f685191b17c3089385981e1639e90187302"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "Sn",
+      "first_line": 214,
+      "last_line": 219,
+      "extracted_utf8_sha256": "28cc1ecb4fceccc5be24e32fc8606b824016fa16dc71a2d7a8271d198c580ace"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "Factorial",
+      "first_line": 230,
+      "last_line": 241,
+      "extracted_utf8_sha256": "0d33313e2fd37c5f16fc7e7086cfaf905d4eb3e86dc0613753f90bd7f5e257d7"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "Combination",
+      "first_line": 243,
+      "last_line": 260,
+      "extracted_utf8_sha256": "cba3cc271cf733e8fc25256b667820ed60b37b4ba5fb8de57257d4c9934d8881"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "GetCorrectionWeighted",
+      "first_line": 122,
+      "last_line": 150,
+      "extracted_utf8_sha256": "71b75967a363b10c675d0f470b59be01cce8ff764f068516628e6ee164ee2fe4"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "DegreeScheduleDecreasingStages",
+      "first_line": 152,
+      "last_line": 208,
+      "extracted_utf8_sha256": "4ed98f4d21b5c3424994410d41ddaf442aa246b1992daddceb88b9deccfa45e1"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "UpdateSigma2FromStats",
+      "first_line": 264,
+      "last_line": 302,
+      "extracted_utf8_sha256": "15385d278f6419685a98a5d6389c800c715f18a09ccd648c76c35f4013e50ff1"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "InitializeSigma2",
+      "first_line": 304,
+      "last_line": 332,
+      "extracted_utf8_sha256": "dd52f0d05486be16fc87c1361a0f319fbce129a827800df9dcd383d6d91d4679"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "ComputePosteriorP",
+      "first_line": 334,
+      "last_line": 405,
+      "extracted_utf8_sha256": "ff54183b86217c4e52223e7ad81d9c7267e6107599b79492d643510a49139772"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "MonomialCount",
+      "first_line": 513,
+      "last_line": 520,
+      "extracted_utf8_sha256": "d0ee326d2379fe3afd6a7796ce5c4745a993501ccdb9fceab50014c9746a46a9"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "TotalMonomialCount",
+      "first_line": 522,
+      "last_line": 529,
+      "extracted_utf8_sha256": "50095f21b48fab0993e57937a483eb445fd3c6ab89cbd594207615e86309cc2a"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "TotalParamCount",
+      "first_line": 531,
+      "last_line": 534,
+      "extracted_utf8_sha256": "03dd8abdd851e149706de1bdb5395c618fe01711cc1028f5c442caa8f1fa456f"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "CreateCoeffSet",
+      "first_line": 540,
+      "last_line": 554,
+      "extracted_utf8_sha256": "164341b74d91714f448fa5a11d06f6cf94f8f17fcf12abf8757483dbd7d1c568"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "ValidateCoeffSet",
+      "first_line": 556,
+      "last_line": 577,
+      "extracted_utf8_sha256": "f83750f874678b2ab2b87dfde977c2bcd62b3dd18fac820fc9ce1e24f3da1457"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "SetCoeffSetZero",
+      "first_line": 579,
+      "last_line": 584,
+      "extracted_utf8_sha256": "fe99a771c62efc422964def9ad6219def9fd14c25baec21098afa6afa377655b"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "GetTaylorCoef3D",
+      "first_line": 615,
+      "last_line": 652,
+      "extracted_utf8_sha256": "f7aecf66752b02370d479f023f1db9abd5a086cfc01092d3536c516410ac34e3"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "GetMatB4Analytic3D",
+      "first_line": 658,
+      "last_line": 703,
+      "extracted_utf8_sha256": "9995088d4f4978c36d2a9adeff29e6aa4830cbe88420209b32bb5a62a257de3f"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "GetL4Analytic3D",
+      "first_line": 709,
+      "last_line": 755,
+      "extracted_utf8_sha256": "0fa0e370f5b94c6d53634ff8f2d40566966bce68e294fae435d62be2e2db6058"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "GetCorrectionWeightedByPoint3D",
+      "first_line": 763,
+      "last_line": 807,
+      "extracted_utf8_sha256": "428e448ae23f4c2487a4c7ec7a731a5cbd6db4da9db356564eaa5017603cb155"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "GetDeltaVec3D4Analytic",
+      "first_line": 813,
+      "last_line": 883,
+      "extracted_utf8_sha256": "dd24c36874cbcffcd8a952d4e75d0b3ef28b0e603fca9ccce25da3f8ae460b22"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "AnalyticFitting3D",
+      "first_line": 889,
+      "last_line": 942,
+      "extracted_utf8_sha256": "cfeac3c0b9136967e0de2b9287b88459542a85946984ab61c4562bd0363d8a26"
+    },
+    {
+      "source": "Algo.h",
+      "symbol": "ApplyAnalyticMap3D",
+      "first_line": 948,
+      "last_line": 995,
+      "extracted_utf8_sha256": "71733ef3acef4c692e37cd2b2d3ed4d662fb64f59bfbe082a78f4cf1ced8325a"
+    },
+    {
+      "source": "Fitting.h",
+      "symbol": "CreateCoeffSet2D",
+      "first_line": 27,
+      "last_line": 40,
+      "extracted_utf8_sha256": "9a138e96af9d4fbf497711d3a7ee4962eabb703d2e7a480ac5c9413054640f4f"
+    },
+    {
+      "source": "Fitting.h",
+      "symbol": "GetMatB4Analytic",
+      "first_line": 43,
+      "last_line": 91,
+      "extracted_utf8_sha256": "22b51b932986bc1701fd840f4f587002a4b44764434e0161fd526ef174d90342"
+    },
+    {
+      "source": "Fitting.h",
+      "symbol": "GetL4Analytic",
+      "first_line": 93,
+      "last_line": 146,
+      "extracted_utf8_sha256": "dcb2611209446c91c611de2e8864a123438f13bb6b8fc0b531185c09030da462"
+    },
+    {
+      "source": "Fitting.h",
+      "symbol": "GetDeltaVec4Analytic",
+      "first_line": 149,
+      "last_line": 200,
+      "extracted_utf8_sha256": "4f33edd395061dfaa0bcbea4e5e9a8ed41bd024e1d5b09db227f1d9fae010f74"
+    },
+    {
+      "source": "Fitting.h",
+      "symbol": "AnalyticFitting",
+      "first_line": 202,
+      "last_line": 256,
+      "extracted_utf8_sha256": "fb88396c6d5643c585215517050202af2ef581c0eb4a98a8cc97de69c0e676e7"
+    },
+    {
+      "source": "Fitting.h",
+      "symbol": "ApplyAnalyticMap",
+      "first_line": 268,
+      "last_line": 318,
+      "extracted_utf8_sha256": "54a8b9ea7ad5659c159a0bfdd9fcbfaa149d59d773c6cf171082ab4163dc1312"
+    },
+    {
+      "source": "Fitting.h",
+      "symbol": "BuildWeightMatrix2D",
+      "first_line": 320,
+      "last_line": 335,
+      "extracted_utf8_sha256": "cf2e3bcef6f74e89a80b7bd7cd6439bca441731cdadd3258a6d6a4122669a508"
+    },
+    {
+      "source": "Fitting.h",
+      "symbol": "AMVFF2D_MStep",
+      "first_line": 366,
+      "last_line": 415,
+      "extracted_utf8_sha256": "e86cf0885dbb45848e8f0c34cfd9ac4eefe35eb61347e16b763f09b00bebba76"
+    },
+    {
+      "source": "Fitting.h",
+      "symbol": "AMVFF3D_MStep",
+      "first_line": 966,
+      "last_line": 1009,
+      "extracted_utf8_sha256": "6d58bb7bf99697d07c9241a8d6b3c507e3fb141ab4e2781b90654aa342794fc5"
+    }
+  ],
+  "modifications": [
+    "ACPD: select verbatim functions; wrap 2D/3D in comparison namespaces; define __declspec(x) empty",
+    "probreg: -U__SSE__; prefix values explicitly zeroed because upstream compute ignores start",
+    "FilterReg: unchanged no-blur helper body, minimal key declaration instead of CUDA header"
+  ]
+}

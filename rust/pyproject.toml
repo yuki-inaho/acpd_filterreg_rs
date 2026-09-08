@@ -1,0 +1,17 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+[project]
+name = "acpd-filterreg-rs"
+version = "0.2.0"
+description = "Rust/PyO3 numerical engine for acpd-filterreg"
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT AND BSD-3-Clause"}
+dependencies = ["numpy>=1.26"]
+[tool.maturin]
+bindings = "pyo3"
+manifest-path = "crates/acpd-py/Cargo.toml"
+python-source = "python"
+module-name = "acpd_filterreg_rs._native"
+strip = true

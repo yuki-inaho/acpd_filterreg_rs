@@ -1,0 +1,65 @@
+{
+  "source_basis": "Attached versions, not current remote branches",
+  "archives": [
+    {
+      "name": "hybridreg_rust_sources.zip",
+      "bytes": 54136,
+      "sha256": "dc678bdf0ccb6c03af12d82d4ac7a015a6b1f806ec2b7b3e44b54afe383edc6f"
+    },
+    {
+      "name": "acpd_filterreg_theory_ja.pdf",
+      "bytes": 380213,
+      "sha256": "c561a954d63d274f57e0b1c92852cd1fa0917284e44c6bf9a9b4ef59ea64c889"
+    },
+    {
+      "name": "FilterReg: Robust and Efficient Probabilistic Point-Set Registration using Gaussian Filter and Twist Parameterization.pdf",
+      "bytes": 1958196,
+      "sha256": "8f88e6854f484f01e2b25d0df01b5429479a81c2323330b2d48f130cd1530d83"
+    },
+    {
+      "name": "hybridreg_theory_ja.pdf",
+      "bytes": 394688,
+      "sha256": "3d964553fd3a6252b3c5941e75c4da317e0c7da7deda69113a93f3b2ecb22597"
+    },
+    {
+      "name": "Analytic-CPD-main(1).zip",
+      "bytes": 1601377,
+      "sha256": "e5508e6106739ec78dab0c682a9a162051d4fa146a72f26a386d28d293c29b7c"
+    },
+    {
+      "name": "probreg-master(1).zip",
+      "bytes": 40836956,
+      "sha256": "86ed33276127ba10e514a0795963253d329c6ca0b25f72b0170d1fcc9eb44d32"
+    },
+    {
+      "name": "FilterReg-master.zip",
+      "bytes": 10170196,
+      "sha256": "5575eb0fc2a7aa14ddb917488ed3b6ef535bf71058031b4d82d02e66cbaed1b4"
+    },
+    {
+      "name": "hybridreg_theory_latex.zip",
+      "bytes": 419650,
+      "sha256": "8fa4dde513caaed9036630fdeef0e65e2ac0c62ce33217746095d1e9ec183894"
+    },
+    {
+      "name": "hybridreg_2d3d_cpp_rust.zip",
+      "bytes": 496803,
+      "sha256": "14db7eba374d8d00b32d4a4ffb364a8f0231f7ef9b36f0f04409326fc28c6673"
+    },
+    {
+      "name": "cpd3d_rs-main.zip",
+      "bytes": 876454,
+      "sha256": "5f63b4e7a6c269331d6037e8c8566ebc8f44565c94a51034bf77872c20ab8175"
+    },
+    {
+      "name": "acpd_filterreg_suite.zip",
+      "bytes": 1586199,
+      "sha256": "cbebd8eabf74e73468643006c47b96139b20033265caf0c12f682f4d61741b66"
+    },
+    {
+      "name": "Structured Analytic Coherent Point Drift for Non-Rigid Point Set Registration.pdf",
+      "bytes": 19600125,
+      "sha256": "1c71045fa1aa270207fbc7fa5b1ee27e17739dafe3a08b65c1210861f566bdd9"
+    }
+  ]
+}
