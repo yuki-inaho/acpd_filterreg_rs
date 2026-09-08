@@ -86,6 +86,76 @@ CPDの事後確率はFilterRegと正規化の向きが逆で、permutohedral格�
 剛体段の反復数が異なります（n=6000で48対25）。CUDA経路の剛体段は**厳密**なガウス和、
 `permutohedral_noblur` は格子近似なので、収束の経路が違うためです。同一反復数の比較ではありません。
 
+## 100〜1000点での最速構成：段ごとに使い分ける
+
+このライブラリが実際に使われる規模での測定です。end-to-end `nonrigid`（剛体＋解析40反復）、
+1回あたりミリ秒、5試行の最小値（他プロセス負荷に対して頑健な統計量）。
+
+### d=3
+
+| 剛体段 | ACPD段 | n=100 | n=200 | n=500 | n=1000 |
+|---|---|---:|---:|---:|---:|
+| permutohedral | direct | **32.0** | 161.3 | 743.9 | 2525.2 |
+| permutohedral_noblur | direct | 38.2 | **136.8** | 651.9 | 2566.5 |
+| direct | direct | 69.6 | 210.2 | 964.2 | 2876.0 |
+| probreg | direct | 66.2 | 211.5 | 775.2 | 3001.2 |
+| fgt | direct | 42.2 | 181.2 | 876.5 | 3790.0 |
+| cuda | direct | 63.5 | 156.0 | 661.8 | 2289.6 |
+| **permutohedral_noblur** | **cuda** | 91.9 | 151.0 | 335.7 | **587.7** |
+| cuda | cuda | 100.5 | 170.0 | **323.1** | 666.3 |
+| cuda | cuda（fp32） | 180.3 | 274.5 | 457.6 | 990.4 |
+
+### d=2
+
+| 剛体段 | ACPD段 | n=100 | n=200 | n=500 | n=1000 |
+|---|---|---:|---:|---:|---:|
+| **permutohedral_noblur** | direct | **26.1** | **87.0** | 466.4 | 1787.9 |
+| permutohedral | direct | 32.0 | 98.8 | 510.3 | 1965.3 |
+| direct | direct | 36.3 | 138.5 | 966.5 | 4014.8 |
+| fgt | direct | 34.7 | 141.1 | 1135.7 | 4743.8 |
+| cuda | direct | 71.6 | 137.6 | 506.9 | 2056.4 |
+| **permutohedral_noblur** | **cuda** | 97.2 | 119.5 | **200.7** | **350.1** |
+| cuda | cuda | 115.1 | 142.3 | 239.8 | 427.8 |
+
+### 選び方
+
+| 点数 | 最速の構成 |
+|---|---|
+| **n ≲ 200** | **純CPU**。剛体 `permutohedral_noblur`（3次元 n=100 のみ `permutohedral`）＋ ACPD `direct` |
+| **n ≳ 300〜1000** | **混成**。剛体 `permutohedral_noblur`（CPU）＋ **ACPD の E-step だけ `cuda`** |
+
+```python
+reg.registration(fixed, moving, method="nonrigid",
+                 backend="permutohedral_noblur",                 # 剛体段: CPU の O(N) 格子
+                 analytic=reg.AnalyticOptions(backend="cuda"))   # ACPD段: GPU
+```
+
+n=1000 で 2525 → 588 ms（4.3倍、d=3）、d=2 で 1788 → 350 ms（5.1倍）です。
+
+**「全部CPU」でも「全部GPU」でもないのは、段ごとに計算構造が違うからです。**
+剛体段は permutohedral 格子が O(N) なので CPU が勝ち、
+ACPD 段は正規化の向きが逆で格子が使えず O(N²) のままなので GPU が勝ちます。
+設計文書が「対応推定と変形推定を別々に解決する」と述べているのは、この構造そのものです。
+
+補足:
+
+- **n ≲ 200 でGPUが負けるのは転送コスト**です。変換呼び出しごとにH2D/D2Hしており、固定費が30〜100 msあります。
+  GPU常駐化（下記の未実装項目）で下がる余地があります。
+- **fp32 はこの規模では効きません。** n=1000・d=3 で 666→990 ms と逆に遅くなります。
+  反復数（12+40）も対応付きRMS（4.254e-07）もfp64と同一なので収束差ではありません。
+  この規模ではカーネルがFP64スループット律速になっておらず、共有メモリのタイルをdoubleで置いたまま
+  要素ごとにfloatへ変換する分だけ増えるためです。fp32が効くのはn=8000級（そこでは1.8倍速）からです。
+- `fgt` はこの規模でも最下位クラスで、既定にしない判断は変わりません。
+
+再実行:
+
+```sh
+python tools/benchmark_speed.py --binary cpp/build/cuda/acpd_bench \
+  --stages nonrigid --sizes 100,200,500,1000 --dims 2,3 \
+  --backends direct,permutohedral,permutohedral_noblur,probreg,fgt,cuda \
+  --analytic-backends direct,cuda --trials 5
+```
+
 ## 実装していないもの
 
 設計文書のうち、本ブランチが**扱っていない**部分です。速度・精度の主張もしていません。

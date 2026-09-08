@@ -8,6 +8,8 @@ which is the metric to use when comparing two builds.
     python tools/benchmark_speed.py                       # sweep, wall clock
     python tools/benchmark_speed.py --ir --reps 1         # deterministic Ir
     python tools/benchmark_speed.py --compare <other-acpd_bench>   # A/B a build
+    python tools/benchmark_speed.py --stages nonrigid --sizes 100,200,500,1000 \\
+        --backends permutohedral_noblur,cuda --analytic-backends direct,cuda --trials 5
 
 `--compare` takes the path of an `acpd_bench` built from another revision, so a
 change can be measured against its own baseline without trusting the clock.
@@ -68,6 +70,13 @@ def main() -> None:
     parser.add_argument('--ir', action='store_true', help='deterministic instruction counts via callgrind')
     parser.add_argument('--compare', type=Path, help='second acpd_bench binary to A/B against')
     parser.add_argument('--binary', type=Path, help='use this acpd_bench instead of building one')
+    parser.add_argument('--analytic-backends', default='direct',
+                        help='comma separated ACPD E-step backends. --backends selects the FilterReg '
+                             'E-step and is independent of these; the two stages are separate.')
+    parser.add_argument('--cuda-single-precision', action='store_true')
+    parser.add_argument('--trials', type=int, default=1,
+                        help='repeat each case and keep the fastest, the robust statistic when other '
+                             'processes are competing for the machine')
     parser.add_argument('--output', type=Path)
     options = parser.parse_args()
 
@@ -81,21 +90,32 @@ def main() -> None:
         for dimension in options.dims.split(','):
             for size in options.sizes.split(','):
                 for backend in options.backends.split(','):
-                    arguments = ['--stage', stage, '--d', dimension, '--n', size,
-                                 '--backend', backend, '--reps', str(options.reps)]
-                    if stage != 'estep':
-                        arguments += ['--pair', options.pair]
-                    for label, path in binaries.items():
-                        row = run_case(path, arguments, options.ir)
-                        row['build'] = label
-                        rows.append(row)
-                        print(json.dumps(row), flush=True)
+                    for analytic in options.analytic_backends.split(','):
+                        if stage in ('estep', 'rigid') and analytic != options.analytic_backends.split(',')[0]:
+                            continue  # neither stage reaches the ACPD E-step
+                        arguments = ['--stage', stage, '--d', dimension, '--n', size,
+                                     '--backend', backend, '--reps', str(options.reps)]
+                        if stage != 'estep':
+                            arguments += ['--pair', options.pair, '--analytic-backend', analytic]
+                        if options.cuda_single_precision:
+                            arguments += ['--cuda-single-precision', '1']
+                        metric = 'instructions' if options.ir else 'seconds'
+                        for label, path in binaries.items():
+                            best = None
+                            for _ in range(max(1, options.trials)):
+                                candidate = run_case(path, arguments, options.ir)
+                                if best is None or (candidate.get(metric) or 0) < (best.get(metric) or 0):
+                                    best = candidate
+                            best['build'] = label
+                            best['trials'] = max(1, options.trials)
+                            rows.append(best)
+                            print(json.dumps(best), flush=True)
 
     metric = 'instructions' if options.ir else 'seconds'
     report = {'metric_note': 'seconds are load-sensitive; instructions are deterministic',
               'primary_metric': metric, 'reps': options.reps, 'pair': options.pair, 'rows': rows}
     if options.compare:
-        keys = ('stage', 'backend', 'n', 'd')
+        keys = ('stage', 'backend', 'analytic_backend', 'n', 'd')
         current = {tuple(r[k] for k in keys): r for r in rows if r['build'] == 'current'}
         baseline = {tuple(r[k] for k in keys): r for r in rows if r['build'] == 'baseline'}
         report['speedup'] = {'/'.join(map(str, k)): (baseline[k][metric]/current[k][metric])
