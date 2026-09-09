@@ -24,6 +24,13 @@ else()
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 15)
     target_compile_options(acpd_core PUBLIC -Wno-template-body)
   endif()
+  # Apple Clang 21 eagerly diagnoses an unused dependent template body in the
+  # byte-identical Eigen 3.3.90 snapshot.  Delayed parsing preserves the
+  # vendored source and matches the behavior of older Clang/GCC toolchains;
+  # users needing a fully current Eigen can still set ACPD_USE_SYSTEM_EIGEN=ON.
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(acpd_core PUBLIC -fdelayed-template-parsing)
+  endif()
 endif()
 target_compile_definitions(acpd_core PUBLIC EIGEN_MPL2_ONLY)
 set_target_properties(acpd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)

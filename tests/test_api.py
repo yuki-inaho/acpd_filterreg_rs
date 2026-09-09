@@ -6,13 +6,12 @@ import acpd_filterreg as reg
 
 
 def _backends():
-    """Every CPU backend, plus cuda only where a device can actually run it.
+    """Backends shared by both native-engine environments.
 
-    Omitting cuda when no device is present is a hardware condition, not a silent
-    algorithmic fallback: test_cuda_backend_never_falls_back_to_cpu asserts that
-    selecting it without a device raises.
+    CUDA has dedicated tests below and is excluded here because module-level
+    parametrization runs before the ``engine`` fixture is available.
     """
-    return tuple(b for b in reg.backend_names() if b != 'cuda' or reg.cuda_available())
+    return tuple(b for b in reg.backend_names() if b != 'cuda')
 from acpd_filterreg import _api
 
 
@@ -341,19 +340,19 @@ def test_cuda_is_absent_from_the_rust_engine():
 
 
 @pytest.mark.parametrize('d', [2, 3])
-def test_cuda_matches_the_exact_cpu_sum(d):
+def test_cuda_matches_the_exact_cpu_sum(d, engine):
     """The device operator is exact pair evaluation, so it must agree to rounding."""
-    if not reg.cuda_available():
-        pytest.skip('no CUDA device on this machine')
+    if engine != 'cpp' or not reg.cuda_available(engine):
+        pytest.skip('the cuda backend needs a device and the C++ engine')
     rng = np.random.default_rng(29 + d)
     x, y = rng.normal(size=(400, d)), rng.normal(size=(350, d)) + 0.1
     values = np.column_stack([np.ones(len(x)), x, (x * x).sum(axis=1)])
-    exact = reg.gaussian_sum(x, y, values, sigma2=0.05, backend='direct')
-    device = reg.gaussian_sum(x, y, values, sigma2=0.05, backend='cuda')
+    exact = reg.gaussian_sum(x, y, values, sigma2=0.05, backend='direct', engine=engine)
+    device = reg.gaussian_sum(x, y, values, sigma2=0.05, backend='cuda', engine=engine)
     scale = max(float(np.abs(exact).max()), 1e-300)
     assert float(np.abs(device - exact).max()) / scale < 1e-13
     # Single precision is a declared trade-off, not a silent one.
-    single = reg.gaussian_sum(x, y, values, sigma2=0.05, backend='cuda',
+    single = reg.gaussian_sum(x, y, values, sigma2=0.05, backend='cuda', engine=engine,
                               cuda=reg.CudaOptions(single_precision=True))
     assert float(np.abs(single - exact).max()) / scale < 1e-5
 

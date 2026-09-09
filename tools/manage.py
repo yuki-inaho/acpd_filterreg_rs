@@ -38,6 +38,11 @@ def test(engine: str) -> None:
     if engine in ('cpp','driver'):
         files.append('tests/test_core_reference.py');args+=['--driver',str(driver())]
     if engine!='driver':files.append('tests/test_native_boundary.py')
+    # Colored registration and voxel preprocessing use the C++ extension for
+    # their CUDA checks.  Keep them in the C++ environment; the Rust-only
+    # environment intentionally does not build/import acpd_filterreg_cpp.
+    if engine == 'cpp':
+        files += ['tests/test_color_registration.py', 'tests/test_preprocessing.py']
     environment=dict(os.environ)
     environment['PYTHONPATH']=os.pathsep.join([str(ROOT/'python'),str(ROOT/'tests'),environment.get('PYTHONPATH','')])
     run(sys.executable,'-m','pytest',*files,*args,env=environment)
@@ -69,7 +74,11 @@ def static_check() -> None:
                 for dependency in task.get('depends-on',[]):
                     assert dependency in base,(env,name,dependency)
     expected=(ROOT/'docs/review/WORK_ORDER.sha256').read_text().split()[0]
-    assert hashlib.sha256((ROOT/'docs/review/WORK_ORDER.md').read_bytes()).hexdigest()==expected,'Frozen DoD changed'
+    # The frozen requirement is a text document.  Normalize checkout/editor
+    # line endings so Windows does not report a false DoD change after a CRLF
+    # conversion; the expected digest is defined over LF bytes.
+    work_order=(ROOT/'docs/review/WORK_ORDER.md').read_bytes().replace(b'\r\n',b'\n').replace(b'\r',b'\n')
+    assert hashlib.sha256(work_order).hexdigest()==expected,'Frozen DoD changed'
     prohibited=('todo!(','unimplemented!(','Backend::Grid','analytic.regularization','max_step','allow_degree_reduction')
     for p in (ROOT/'rust').glob('**/*.rs'):
         if 'target' in p.parts:continue

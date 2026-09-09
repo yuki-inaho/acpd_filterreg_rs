@@ -7,13 +7,14 @@ import acpd_filterreg as reg
 
 
 def _backends():
-    """Every CPU backend, plus cuda only where a device can actually run it.
+    """Backends shared by the C++ and Rust native-engine test matrices.
 
-    Omitting cuda when no device is present is a hardware condition, not a silent
-    algorithmic fallback: test_cuda_backend_never_falls_back_to_cpu asserts that
-    selecting it without a device raises.
+    CUDA is tested separately with the ``engine`` fixture.  Keeping it out of
+    module-level parametrization is important because collection happens before
+    the fixture can select the native engine, and the Rust environment does not
+    install the C++ extension merely to answer a CUDA capability query.
     """
-    return tuple(b for b in reg.backend_names() if b != 'cuda' or reg.cuda_available())
+    return tuple(b for b in reg.backend_names() if b != 'cuda')
 from acpd_filterreg import _api
 
 CASES = json.loads((Path(__file__).parent/'fixtures/upstream.json').read_text())['cases']
@@ -52,8 +53,6 @@ def test_upstream_taylor_basis(case, engine):
 @pytest.mark.parametrize('d', [2, 3])
 @pytest.mark.parametrize('backend', _backends())
 def test_filterreg_fused_moments(d, backend, engine):
-    if backend == 'cuda' and not reg.cuda_available(engine):
-        pytest.skip('the cuda backend needs a device and the C++ engine')
     rng = np.random.default_rng(5+d)
     x, y = rng.normal(size=(71,d)), rng.normal(size=(52,d))
     variance, w = .8, .15
@@ -67,6 +66,24 @@ def test_filterreg_fused_moments(d, backend, engine):
     np.testing.assert_allclose(out.x2, moments[:,-1]/den, atol=1e-12, rtol=1e-12)
     if backend == 'probreg':
         assert out.lattice_mode == 'probreg_noblur'
+
+
+@pytest.mark.parametrize('d', [2, 3])
+def test_filterreg_fused_moments_cuda(d, engine):
+    """Exercise the CUDA fused-moment path only in the C++ environment."""
+    if engine != 'cpp' or not reg.cuda_available(engine):
+        pytest.skip('the cuda backend needs a device and the C++ engine')
+    rng = np.random.default_rng(105+d)
+    x, y = rng.normal(size=(71, d)), rng.normal(size=(52, d))
+    variance, w = .8, .15
+    channels = np.column_stack([np.ones(len(x)), x, (x*x).sum(axis=1)])
+    moments = reg.gaussian_sum(x, y, channels, sigma2=variance, backend='cuda', engine=engine)
+    c = (2*np.pi*variance)**(d/2)*w/(1-w)*len(x)/len(y)
+    den = moments[:, 0] + c
+    out = reg.posterior_stats(x, y, sigma2=variance, w=w, kind='filterreg', backend='cuda', engine=engine)
+    np.testing.assert_allclose(out.rho, moments[:, 0]/den, atol=1e-12, rtol=1e-12)
+    np.testing.assert_allclose(out.px, moments[:, 1:d+1]/den[:, None], atol=1e-12, rtol=1e-12)
+    np.testing.assert_allclose(out.x2, moments[:, -1]/den, atol=1e-12, rtol=1e-12)
 
 
 
