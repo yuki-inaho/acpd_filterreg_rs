@@ -98,6 +98,70 @@ def test_basis_matches_mapping_module():
         )
 
 
+def test_cuda_six_dimensional_gaussian_matches_direct():
+    import acpd_filterreg as reg
+
+    if not reg.cuda_available():
+        pytest.skip("no CUDA-enabled C++ extension/device")
+    rng = np.random.default_rng(91)
+    sources = np.ascontiguousarray(rng.normal(size=(37, 6)), dtype=np.float64)
+    queries = np.ascontiguousarray(rng.normal(size=(29, 6)), dtype=np.float64)
+    values = np.ascontiguousarray(rng.normal(size=(37, 5)), dtype=np.float64)
+    direct = reg.gaussian_sum(sources, queries, values, sigma2=0.7, backend="direct")
+    device = reg.gaussian_sum(sources, queries, values, sigma2=0.7, backend="cuda")
+    np.testing.assert_allclose(device, direct, rtol=2e-13, atol=2e-13)
+
+
+def test_cuda_color_rigid_matches_direct_color():
+    import acpd_filterreg as reg
+
+    if not reg.cuda_available():
+        pytest.skip("no CUDA-enabled C++ extension/device")
+    rng = np.random.default_rng(92)
+    fixed = rng.normal(scale=0.07, size=(48, 3))
+    colors = rng.normal(size=(48, 3))
+    angle = 0.045
+    rotation = np.array(
+        [[np.cos(angle), -np.sin(angle), 0.0], [np.sin(angle), np.cos(angle), 0.0], [0.0, 0.0, 1.0]]
+    )
+    moving = (fixed - np.array([0.008, -0.004, 0.002])) @ rotation
+    kwargs = dict(
+        color_sigma=0.8,
+        color_weight=0.6,
+        method="rigid",
+        max_iterations=20,
+        tolerance=1e-9,
+    )
+    direct = register_color(fixed, moving, colors, colors, backend="direct_cpu_color", **kwargs)
+    device = register_color(fixed, moving, colors, colors, backend="cuda_color", **kwargs)
+    np.testing.assert_allclose(device.rotation, direct.rotation, rtol=0, atol=2e-10)
+    np.testing.assert_allclose(device.translation, direct.translation, rtol=0, atol=2e-10)
+    np.testing.assert_allclose(device.transformed, direct.transformed, rtol=0, atol=2e-10)
+
+
+def test_cuda_geometry_weight_zero_matches_direct_geometry():
+    import acpd_filterreg as reg
+
+    if not reg.cuda_available():
+        pytest.skip("no CUDA-enabled C++ extension/device")
+    rng = np.random.default_rng(93)
+    fixed = rng.normal(scale=0.05, size=(32, 3))
+    moving = fixed + np.array([0.01, -0.006, 0.003])
+    colors = rng.uniform(0, 100, size=(32, 3))
+    kwargs = dict(
+        color_sigma=20.0,
+        color_weight=0.0,
+        method="rigid",
+        max_iterations=12,
+        tolerance=1e-9,
+    )
+    direct = register_color(fixed, moving, colors, colors, backend="direct_cpu_color", **kwargs)
+    device = register_color(fixed, moving, colors, colors, backend="cuda_color", **kwargs)
+    np.testing.assert_allclose(device.rotation, direct.rotation, rtol=0, atol=2e-10)
+    np.testing.assert_allclose(device.translation, direct.translation, rtol=0, atol=2e-10)
+    np.testing.assert_allclose(device.transformed, direct.transformed, rtol=0, atol=2e-10)
+
+
 # --------------------------------------------------------------------------- #
 # Posterior oracle, both directions, with and without color.
 # --------------------------------------------------------------------------- #

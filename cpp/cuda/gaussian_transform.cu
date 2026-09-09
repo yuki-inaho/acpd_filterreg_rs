@@ -26,11 +26,12 @@
 namespace {
 
 constexpr int kMaxChannels = 8;   // d + 2 with normals is 8 at d = 3
-constexpr int kMaxDimension = 3;
+constexpr int kMaxDimension = 16;
+constexpr int kGeometryDimension = 3;
 constexpr int kTile = 128;
 constexpr int kBlock = 128;
 
-template <typename Compute>
+template <typename Compute, int MaxDimension>
 __global__ void gaussian_transform_kernel(const double* __restrict__ sources,
                                           const double* __restrict__ values,
                                           const double* __restrict__ queries,
@@ -38,11 +39,11 @@ __global__ void gaussian_transform_kernel(const double* __restrict__ sources,
                                           int source_count, int query_count,
                                           int dimension, int channels,
                                           double inverse_two_sigma_squared) {
-    __shared__ double tile_source[kTile * kMaxDimension];
+    __shared__ double tile_source[kTile * MaxDimension];
     __shared__ double tile_value[kTile * kMaxChannels];
 
     const int query = blockIdx.x * blockDim.x + threadIdx.x;
-    double position[kMaxDimension];
+    double position[MaxDimension];
     double accumulator[kMaxChannels];
     for (int c = 0; c < channels; ++c) accumulator[c] = 0.0;
     if (query < query_count) {
@@ -56,7 +57,7 @@ __global__ void gaussian_transform_kernel(const double* __restrict__ sources,
         for (int k = threadIdx.x; k < span; k += blockDim.x) {
             const std::size_t source = static_cast<std::size_t>(base + k);
             for (int a = 0; a < dimension; ++a) {
-                tile_source[k * kMaxDimension + a] = sources[source * dimension + a];
+                tile_source[k * MaxDimension + a] = sources[source * dimension + a];
             }
             for (int c = 0; c < channels; ++c) {
                 tile_value[k * kMaxChannels + c] = values[source * channels + c];
@@ -69,7 +70,7 @@ __global__ void gaussian_transform_kernel(const double* __restrict__ sources,
                 for (int a = 0; a < dimension; ++a) {
                     const Compute delta =
                         static_cast<Compute>(position[a]) -
-                        static_cast<Compute>(tile_source[k * kMaxDimension + a]);
+                        static_cast<Compute>(tile_source[k * MaxDimension + a]);
                     distance += delta * delta;
                 }
                 const Compute weight =
@@ -157,14 +158,22 @@ extern "C" int acpd_cuda_gaussian_transform(const double* sources, int source_co
 
     const double inverse_two_sigma_squared = 0.5 / sigma2;
     const int blocks = (query_count + kBlock - 1) / kBlock;
-    if (single_precision) {
-        gaussian_transform_kernel<float><<<blocks, kBlock>>>(
-            device_sources, device_values, device_queries, device_out,
-            source_count, query_count, dimension, channels, inverse_two_sigma_squared);
+    if (single_precision && dimension <= kGeometryDimension) {
+        gaussian_transform_kernel<float, kGeometryDimension><<<blocks, kBlock>>>(
+            device_sources, device_values, device_queries, device_out, source_count,
+            query_count, dimension, channels, inverse_two_sigma_squared);
+    } else if (single_precision) {
+        gaussian_transform_kernel<float, kMaxDimension><<<blocks, kBlock>>>(
+            device_sources, device_values, device_queries, device_out, source_count,
+            query_count, dimension, channels, inverse_two_sigma_squared);
+    } else if (dimension <= kGeometryDimension) {
+        gaussian_transform_kernel<double, kGeometryDimension><<<blocks, kBlock>>>(
+            device_sources, device_values, device_queries, device_out, source_count,
+            query_count, dimension, channels, inverse_two_sigma_squared);
     } else {
-        gaussian_transform_kernel<double><<<blocks, kBlock>>>(
-            device_sources, device_values, device_queries, device_out,
-            source_count, query_count, dimension, channels, inverse_two_sigma_squared);
+        gaussian_transform_kernel<double, kMaxDimension><<<blocks, kBlock>>>(
+            device_sources, device_values, device_queries, device_out, source_count,
+            query_count, dimension, channels, inverse_two_sigma_squared);
     }
     if (cudaGetLastError() != cudaSuccess || cudaDeviceSynchronize() != cudaSuccess) {
         release();

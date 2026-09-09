@@ -66,6 +66,14 @@ def points(name: str, value: Any, *, copy: bool) -> np.ndarray:
     return result
 
 
+def features(name: str, value: Any, *, copy: bool) -> np.ndarray:
+    """Validate generic Gaussian-kernel features independently of geometry."""
+    result = array(name, value, 2, copy=copy)
+    if not 1 <= result.shape[1] <= 16:
+        raise ValueError(f"{name} must have shape (n, d) with 1 <= d <= 16")
+    return result
+
+
 def backend(value: str) -> str:
     if value not in ("direct", "permutohedral", "permutohedral_noblur", "probreg", "fgt", "cuda"):
         raise ValueError("unknown Gaussian backend; no automatic fallback is provided")

@@ -1,8 +1,9 @@
-"""Colored 3D FilterReg + Analytic-CPD, a pure NumPy/SciPy ``direct_cpu_color`` backend.
+"""Colored 3D FilterReg + Analytic-CPD with CPU-direct and CUDA FilterReg kernels.
 
-This module is a *colored extension* implemented entirely in NumPy/SciPy. It is
-NOT the native (C++/Rust) engine; that native implementation exposes no color
-input. FilterReg/CPD can in general incorporate feature attributes; the specific
+This module is a *colored extension*. The rigid fit and result assembly are in
+NumPy; ``cuda_color`` delegates the FilterReg Gaussian-sum E-step to the native
+CUDA engine without forming a correspondence matrix. FilterReg/CPD can in
+general incorporate feature attributes; the specific
 combination implemented here -- a CIELAB (or generic continuous-attribute) Gaussian
 gate added to the kernel together with the analytic Taylor mapping -- is a custom
 extension of this repository, not a claim about the native engine's capabilities.
@@ -46,6 +47,7 @@ __all__ = [
 ]
 
 Method = Literal["rigid", "analytic", "nonrigid"]
+ColorBackend = Literal["direct_cpu_color", "cuda_color"]
 _TWO_PI_LN = log(2.0 * pi)
 
 
@@ -308,6 +310,81 @@ def color_posterior_statistics(
     return PosteriorStats(rho, px, x2, mass, nll)
 
 
+def _cuda_color_posterior_statistics(
+    y: np.ndarray,
+    x: np.ndarray,
+    sigma2: float,
+    w: float,
+    *,
+    moving_colors: np.ndarray,
+    fixed_colors: np.ndarray,
+    color_precision: float,
+    single_precision: bool,
+) -> PosteriorStats:
+    """FilterReg row posterior using one CUDA Gaussian-sum over XYZ+color.
+
+    Geometry is whitened by ``sigma2`` and color by ``color_precision``. The
+    returned moments still contain XYZ only, so color affects correspondence
+    probabilities but is never rotated or translated as geometry.
+    """
+    from ._api import gaussian_sum
+    from ._options import CudaOptions
+
+    if sigma2 <= 0 or not np.isfinite(sigma2):
+        raise ColorRegistrationError("sigma2 must be finite and positive")
+    if not (0.0 <= w < 1.0) or not np.isfinite(w):
+        raise ColorRegistrationError("w must be in [0, 1)")
+    if color_precision > 0.0 and x.shape[1] + fixed_colors.shape[1] > 16:
+        raise ColorRegistrationError("cuda_color supports at most 16 combined geometry/color features")
+
+    geometry_scale = 1.0 / np.sqrt(sigma2)
+    if color_precision == 0.0:
+        sources = np.ascontiguousarray(x * geometry_scale, dtype=np.float64)
+        queries = np.ascontiguousarray(y * geometry_scale, dtype=np.float64)
+    else:
+        color_scale = np.sqrt(color_precision)
+        sources = np.ascontiguousarray(
+            np.concatenate((x * geometry_scale, fixed_colors * color_scale), axis=1),
+            dtype=np.float64,
+        )
+        queries = np.ascontiguousarray(
+            np.concatenate((y * geometry_scale, moving_colors * color_scale), axis=1),
+            dtype=np.float64,
+        )
+    values = np.ascontiguousarray(
+        np.column_stack((np.ones(len(x)), x, np.sum(x * x, axis=1))),
+        dtype=np.float64,
+    )
+    moments = gaussian_sum(
+        sources,
+        queries,
+        values,
+        sigma2=1.0,
+        backend="cuda",
+        cuda=CudaOptions(single_precision=single_precision),
+    )
+
+    m, d = y.shape
+    n = len(x)
+    normalizer = 0.5 * d * (_TWO_PI_LN + log(sigma2))
+    outlier = 0.0 if w == 0.0 else np.exp(
+        normalizer + log(w) - np.log1p(-w) + log(n / m)
+    )
+    denominator = moments[:, 0] + outlier
+    if np.any(denominator <= 0) or not np.isfinite(denominator).all():
+        raise ColorNumericalError("CUDA posterior has no representable support")
+
+    rho = moments[:, 0] / denominator
+    px = moments[:, 1 : d + 1] / denominator[:, None]
+    x2 = moments[:, d + 1] / denominator
+    mass = float(rho.sum())
+    logfactor = np.log1p(-w) - log(n) - normalizer
+    nll = -float(np.sum(np.log(denominator) + logfactor))
+    if not (np.isfinite(mass) and np.isfinite(px).all() and np.isfinite(x2).all()):
+        raise ColorNumericalError("non-finite CUDA posterior moments")
+    return PosteriorStats(rho, px, x2, mass, nll)
+
+
 def _initial_variance(x: np.ndarray, y: np.ndarray) -> float:
     d = x.shape[1]
     sx = float(np.sum((x - x.mean(axis=0)) ** 2) / len(x))
@@ -359,8 +436,8 @@ def _fit_rigid_kabsch(y: np.ndarray, stats: PosteriorStats) -> tuple[np.ndarray,
     rotation = vt.T @ sign @ u.T
     translation = cz - rotation @ cy
     nxt = y @ rotation.T + translation
-    z = stats.px / stats.rho[:, None]
-    err = float(np.sum(rho_a * np.sum((nxt[active] - z[active]) ** 2, axis=1)))
+    z_active = stats.px[active] / rho_a[:, None]
+    err = float(np.sum(rho_a * np.sum((nxt[active] - z_active) ** 2, axis=1)))
     fit_rms = float(np.sqrt(err / mass))
     return rotation, translation, nxt, rank, len(active), fit_rms
 
@@ -449,7 +526,8 @@ def register_color(
     stable_patience: int = 5, no_improve_patience: int = 8, min_iterations: int = 6,
     improvement_relative: float = 1e-6, rebound_relative: float = 1e-3,
     divergence_radius: float = 100.0, initial_rotation: Any = None,
-    initial_translation: Any = None,
+    initial_translation: Any = None, backend: ColorBackend = "direct_cpu_color",
+    cuda_single_precision: bool = False,
 ) -> ColorRegistrationResult:
     """Register ``moving -> fixed`` in 2D/3D using color-augmented FilterReg + Analytic-CPD.
 
@@ -460,6 +538,12 @@ def register_color(
     """
     if method not in ("rigid", "analytic", "nonrigid"):
         raise ColorRegistrationError("method must be 'rigid', 'analytic' or 'nonrigid'")
+    if backend not in ("direct_cpu_color", "cuda_color"):
+        raise ColorRegistrationError("backend must be 'direct_cpu_color' or 'cuda_color'")
+    if backend == "cuda_color" and method != "rigid":
+        raise ColorRegistrationError("cuda_color currently accelerates FilterReg rigid mode only")
+    if type(cuda_single_precision) is not bool:
+        raise ColorRegistrationError("cuda_single_precision must be a Python bool")
     fixed = _as_points("fixed_xyz", fixed_xyz)
     moving = _as_points("moving_xyz", moving_xyz)
     d = fixed.shape[1]
@@ -504,7 +588,9 @@ def register_color(
     # Color kernel is independent of pose (color is not deformed): precompute once
     # in RAW color units; the geometric scale is never applied to color.
     color_precision = color_weight / (color_sigma * color_sigma)
-    if color_precision == 0.0:
+    if backend == "cuda_color":
+        color_logk = None
+    elif color_precision == 0.0:
         color_logk = None  # exact geometry-only path (weight-0 parity)
     else:
         dc = (
@@ -533,7 +619,19 @@ def register_color(
         stop = "iteration_limit"
         best_iter = 0
         for it in range(int(max_iterations)):
-            stats = color_posterior_statistics(y, x, sig, w, inverse=True, color_logk=color_logk)
+            if backend == "cuda_color":
+                stats = _cuda_color_posterior_statistics(
+                    y,
+                    x,
+                    sig,
+                    w,
+                    moving_colors=mc,
+                    fixed_colors=fc,
+                    color_precision=color_precision,
+                    single_precision=cuda_single_precision,
+                )
+            else:
+                stats = color_posterior_statistics(y, x, sig, w, inverse=True, color_logk=color_logk)
             rot_step, t_step, nxt, rank, active, fit_rms = _fit_rigid_kabsch(y, stats)
             next_sigma = _variance_from_statistics(nxt, stats, min_sigma2) if update_sigma2 else sig
             motion = float(np.linalg.norm(y - nxt) / np.sqrt(len(y)))
@@ -663,7 +761,7 @@ def register_color(
         normalization_scale=scale, transformed=transformed, rigid_transformed=rigid_transformed,
         steps=tuple(steps), rigid_stage=rigid_stage, analytic_stage=analytic_stage,
         sigma2=sig * scale * scale, method=method, color_sigma=float(color_sigma),
-        color_weight=float(color_weight), color_dim=color_dim,
+        color_weight=float(color_weight), color_dim=color_dim, backend=backend,
     )
 
 

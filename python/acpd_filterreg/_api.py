@@ -183,7 +183,8 @@ def gaussian_sum(sources: Any, queries: Any, values: Any, *, sigma2: float,
     """
     b = v.backend(backend)
     variance = v.real("sigma2", sigma2)
-    s, q = v.points("sources", sources, copy=copy), v.points("queries", queries, copy=copy)
+    s = v.features("sources", sources, copy=copy)
+    q = v.features("queries", queries, copy=copy)
     value = v.array("values", values, 2, copy=copy)
     if s.shape[1] != q.shape[1] or len(value) != len(s):
         raise ValueError("inconsistent Gaussian transform dimensions")
