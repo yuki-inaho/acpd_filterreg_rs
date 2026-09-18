@@ -165,11 +165,14 @@ class ColorRegistrationResult:
         p = np.asarray(points, dtype=np.float64)
         if p.ndim != 2 or p.shape[1] != len(self.translation):
             raise ColorRegistrationError("point dimension differs from the saved map")
-        with np.errstate(over="raise", invalid="raise"):
-            value = (p @ self.rotation.T + self.translation - self.center) / self.normalization_scale
-            for step in self.steps:
-                value = value + basis(value, step.degree) @ step.coefficients
-            result = value * self.normalization_scale + self.center
+        try:
+            with np.errstate(over="raise", invalid="raise"):
+                value = (p @ self.rotation.T + self.translation - self.center) / self.normalization_scale
+                for step in self.steps:
+                    value = value + basis(value, step.degree) @ step.coefficients
+                result = value * self.normalization_scale + self.center
+        except FloatingPointError as error:
+            raise ColorNumericalError("map evaluation overflow; extrapolation is not bounded") from error
         if not np.isfinite(result).all():
             raise ColorNumericalError("map evaluation overflow; extrapolation is not bounded")
         return result
@@ -567,6 +570,27 @@ def register_color(
             raise ColorRegistrationError(f"{name} must be a positive integer")
     if not 1 <= min_degree <= max_degree <= 10:
         raise ColorRegistrationError("degrees must satisfy 1 <= min_degree <= max_degree <= 10")
+    if sigma2 is not None and (not np.isfinite(sigma2) or sigma2 <= 0):
+        raise ColorRegistrationError("sigma2 must be finite and positive")
+    for name, value in (("tolerance", tolerance), ("min_sigma2", min_sigma2),
+                        ("analytic_tolerance", analytic_tolerance),
+                        ("analytic_min_sigma2", analytic_min_sigma2),
+                        ("rank_tolerance", rank_tolerance), ("min_mass", min_mass)):
+        if not np.isfinite(value) or value <= 0:
+            raise ColorRegistrationError(f"{name} must be finite and positive")
+    if rank_tolerance >= 1:
+        raise ColorRegistrationError("rank_tolerance must be < 1")
+    for name, value in (("improvement_relative", improvement_relative),
+                        ("rebound_relative", rebound_relative)):
+        if not np.isfinite(value) or value < 0:
+            raise ColorRegistrationError(f"{name} must be finite and nonnegative")
+    for name, value in (("stable_patience", stable_patience),
+                        ("no_improve_patience", no_improve_patience),
+                        ("min_iterations", min_iterations)):
+        if int(value) != value or value < 1:
+            raise ColorRegistrationError(f"{name} must be a positive integer")
+    if not np.isfinite(divergence_radius) or divergence_radius <= 1:
+        raise ColorRegistrationError("divergence_radius must be greater than one")
 
     rotation = np.eye(d) if initial_rotation is None else np.asarray(initial_rotation, dtype=np.float64)
     translation0 = np.zeros(d) if initial_translation is None else np.asarray(initial_translation, dtype=np.float64)

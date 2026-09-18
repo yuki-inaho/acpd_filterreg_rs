@@ -63,8 +63,8 @@ def voxel_downsample(
     for attribute in attribute_arrays:
         if attribute.ndim == 0 or attribute.shape[0] != len(point_array):
             raise ValueError("every attribute must have the same first dimension as points")
-        if not np.issubdtype(attribute.dtype, np.number):
-            raise ValueError("attributes must be numeric")
+        if not np.issubdtype(attribute.dtype, np.number) or np.iscomplexobj(attribute):
+            raise ValueError("attributes must be real numbers")
         if not np.isfinite(attribute).all():
             raise ValueError("attributes must contain only finite values")
 
@@ -74,6 +74,9 @@ def voxel_downsample(
             point_array.copy(), empty_attributes, np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
         )
 
+    extent = float(max(-point_array.min(), point_array.max())) / voxel_size
+    if not (extent < 2.0 ** 63):
+        raise ValueError("points / voxel_size exceeds the representable voxel index range")
     voxel_keys = np.floor(point_array / voxel_size).astype(np.int64)
     sort_keys = tuple(
         voxel_keys[:, axis] for axis in range(voxel_keys.shape[1] - 1, -1, -1)

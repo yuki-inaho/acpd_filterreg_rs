@@ -72,6 +72,11 @@ namespace acpd {
             bary[d-rank[i]+1]-=delta;
         }
         bary[0]+=1+bary[width];
+        // The loop below writes every [color][axis] that is ever read, so resetting is
+        // only needed when the caller's hoisted scratch has the wrong shape. Without the
+        // guard the 3-argument overload allocates nothing but still zero-fills and
+        // copy-assigns width keys per point, which is what it exists to avoid.
+        if(out.keys.size()!=static_cast<std::size_t>(width) || out.keys[0].size()!=d)
         out.keys.assign(static_cast<std::size_t>(width),LatticeKey(d));
         out.weights.resize(static_cast<std::size_t>(width));
         for(int color=0;color<width;++color) {
@@ -95,10 +100,15 @@ namespace acpd {
         offsets_.reserve(static_cast<std::size_t>(n_)*(d_+1));
         barycentric_.reserve(offsets_.capacity());
         Simplex simplex;
+        // Eigen::Ref<const RowVectorXd> cannot bind a column-major row (inner stride is
+        // dynamic), so it would heap-copy each row; splat from a row-major image instead.
+        const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> frows=features;
         for(int i=0;i<n_;++i) {
-            enclosing_simplex(features.row(i),blur,simplex);
+            enclosing_simplex(frows.row(i),blur,simplex);
             for(int j=0;j<=d_;++j) {
-                auto inserted=index.emplace(simplex.keys[j],keys_.size());
+                // try_emplace, not emplace: libstdc++ builds the node before looking the
+                // key up, and nearly every vertex in a splat has already been seen.
+                auto inserted=index.try_emplace(simplex.keys[j],keys_.size());
                 if(inserted.second) keys_.push_back(simplex.keys[j]);
                 offsets_.push_back(inserted.first->second);
                 barycentric_.push_back(simplex.weights[j]);
@@ -166,10 +176,11 @@ namespace acpd {
         std::vector<double> weights;
         index_.reserve(static_cast<std::size_t>(f.rows())*(d_+1));
         Simplex s;
+        const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> frows=f;
         for(int i=0;i<f.rows();++i) {
-            enclosing_simplex(f.row(i),false,s);
+            enclosing_simplex(frows.row(i),false,s);
             for(int j=0;j<=d_;++j) {
-                auto item=index_.emplace(s.keys[j],keys_.size());
+                auto item=index_.try_emplace(s.keys[j],keys_.size());
                 if(item.second) keys_.push_back(s.keys[j]);
                 offsets.push_back(item.first->second);
                 weights.push_back(s.weights[j]);
@@ -188,8 +199,9 @@ namespace acpd {
         Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> sliced
         =Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>::Zero(queries.rows(),splatted_.cols());
         Simplex s;
+        const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> qrows=queries;
         for(int i=0;i<queries.rows();++i) {
-            enclosing_simplex(queries.row(i),false,s);
+            enclosing_simplex(qrows.row(i),false,s);
             for(int j=0;j<=d_;++j) {
                 const auto found=index_.find(s.keys[j]);
                 if(found!=index_.end()) sliced.row(i)+=s.weights[j]*splatted_.row(found->second);

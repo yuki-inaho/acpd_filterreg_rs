@@ -20,6 +20,7 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "python"))
 
 from acpd_filterreg.color_registration import (
+    ColorNumericalError,
     ColorRegistrationError,
     basis,
     basis_derivative,
@@ -421,3 +422,51 @@ def test_2d_supported():
     colors = rng.uniform(0, 100, size=(8, 1))
     res = register_color(fixed, moving, colors, colors, color_sigma=10.0, method="rigid")
     np.testing.assert_allclose(res.transformed, fixed, atol=1e-8)
+
+
+def _small_colored_pair(seed: int = 3, n: int = 80):
+    rng = np.random.default_rng(seed)
+    moving = rng.uniform(-1, 1, (n, 3))
+    fixed = moving.copy()
+    fixed[:, 0] += 0.05 * moving[:, 1] ** 2
+    colors = rng.uniform(0, 1, (n, 3))
+    return fixed, colors, moving, colors.copy()
+
+
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"sigma2": -1.0}, "sigma2 must be finite and positive"),
+        ({"sigma2": 0.0}, "sigma2 must be finite and positive"),
+        ({"sigma2": float("nan")}, "sigma2 must be finite and positive"),
+        ({"divergence_radius": 0.5}, "divergence_radius must be greater than one"),
+        ({"rank_tolerance": 2.0}, "rank_tolerance must be < 1"),
+        ({"rank_tolerance": 0.0}, "rank_tolerance must be finite and positive"),
+        ({"min_mass": -1.0}, "min_mass must be finite and positive"),
+        ({"stable_patience": 0}, "stable_patience must be a positive integer"),
+        ({"improvement_relative": -1.0}, "improvement_relative must be finite and nonnegative"),
+    ],
+)
+def test_invalid_numeric_controls_are_rejected(kwargs, message) -> None:
+    """These used to be consumed as truth tests only: a bad sigma2 silently selected
+    the automatic initialization, and a bad divergence_radius or rank_tolerance
+    produced an analytic stage that ran zero iterations and reported a stop reason
+    as if it had converged. AnalyticOptions/FilterRegOptions reject all of them."""
+    fixed, fc, moving, mc = _small_colored_pair()
+    with pytest.raises(ColorRegistrationError, match=message):
+        register_color(fixed_xyz=fixed, fixed_colors=fc, moving_xyz=moving, moving_colors=mc,
+                       color_sigma=0.3, max_iterations=6, analytic_max_iterations=6, **kwargs)
+
+
+def test_transform_overflow_raises_the_module_error_not_FloatingPointError() -> None:
+    """basis() runs under errstate(over="raise") itself, so the usual extrapolation
+    overflow raised FloatingPointError from inside transform's own errstate block and
+    never reached its isfinite check. FloatingPointError is not a
+    ColorRegistrationError, so callers catching the documented base class missed it."""
+    fixed, fc, moving, mc = _small_colored_pair()
+    result = register_color(fixed_xyz=fixed, fixed_colors=fc, moving_xyz=moving, moving_colors=mc,
+                            color_sigma=0.3, max_iterations=8, analytic_max_iterations=10,
+                            min_degree=2, max_degree=3)
+    assert any(step.degree >= 2 for step in result.steps)
+    with pytest.raises(ColorNumericalError, match="extrapolation is not bounded"):
+        result.transform(np.array([[1e170, 0.0, 0.0], [0.0, 0.0, 0.0]]))
