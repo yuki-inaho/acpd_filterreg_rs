@@ -4,6 +4,7 @@
 #include <functional>
 #include <cmath>
 #include <limits>
+#include <vector>
 using namespace acpd;
 namespace {
 int checks=0;
@@ -40,6 +41,27 @@ void dimension_tests(int d){
     coefficients(0,0)=.17;coefficients(d+1,0)=.3;
     Matrix target=basis(y,3)*coefficients;auto nonlinear=fit_analytic(y,paired(target),3,ao);
     close(nonlinear.next,target,1e-11,"nonlinear weighted analytic fitting");
+    // The rank-deficient M-step must be reproducible. Degree six at rank_tolerance
+    // 1e-4 puts the design's smallest pivot ratio (7.6e-5 for d=2) between Eigen's
+    // default threshold (~6e-15) and ours, so the factorization sees full rank while
+    // solve() sees a deficient one. That is the window in which a threshold applied
+    // after the factorization makes CompleteOrthogonalDecomposition back-transform
+    // with Z coefficients computeInPlace never wrote.
+    {
+        auto wide=exponents(d,6);Matrix identity_map=Matrix::Zero(wide.size(),d);
+        for(int a=0;a<d;++a)identity_map(1+a,a)=1;
+        const Matrix deficient=basis(y,6)*identity_map;
+        AnalyticOptions coarse;coarse.rank_tolerance=1e-4;
+        auto first=fit_analytic(y,paired(deficient),6,coarse);
+        check(first.rank<static_cast<int>(wide.size()),"coarse tolerance exposes rank deficiency");
+        for(int trial=0;trial<4;++trial) {
+            std::vector<double> churn(8192*(trial+1),.5+trial);
+            volatile double sink=churn[trial];(void)sink;
+            auto again=fit_analytic(y,paired(deficient),6,coarse);
+            check(again.rank==first.rank,"rank-deficient analytic rank is reproducible");
+            check(again.step.coefficients==first.step.coefficients,"rank-deficient analytic fit is reproducible");
+        }
+    }
     check(variance_from_statistics(target,paired(target),1e-12)==1e-12,"zero residual floor");
     const int parameters=d==2?3:6;auto jac=twist_jacobian(point);
     for(int k=0;k<parameters;++k){Vector delta=Vector::Zero(parameters);delta[k]=1e-7;

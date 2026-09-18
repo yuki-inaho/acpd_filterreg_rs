@@ -84,8 +84,16 @@ namespace acpd {
         // speed of BDCSVD. The coefficients themselves can differ more because the
         // monomial basis reaches condition 2e10 at degree 10; the algorithm consumes the
         // fitted values, and the stored map is evaluated on the same basis.
-        Eigen::CompleteOrthogonalDecomposition<Matrix> solver(design);
+        // setThreshold must precede the factorization. Eigen's own documentation says
+        // so, and the reason is load-bearing here: computeInPlace() partitions Z and
+        // writes m_zCoeffs only when the rank AT COMPUTE TIME is deficient, while
+        // solve() re-evaluates rank() against the threshold in force THEN. Setting the
+        // threshold afterwards lets the two disagree for any pivot ratio between
+        // Eigen's default (eps*k) and rank_tolerance; solve() then applies Z^* using
+        // coefficients that were never written, so the fit is not reproducible.
+        Eigen::CompleteOrthogonalDecomposition<Matrix> solver(design.rows(),design.cols());
         solver.setThreshold(o.rank_tolerance);
+        solver.compute(design);
         Matrix absolute=solver.solve(targets);
         Matrix next=phi*absolute;
         require_finite(next,"analytic M-step");
